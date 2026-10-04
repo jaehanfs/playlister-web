@@ -1,0 +1,1620 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>플레이리스터</title>
+    <script src="./config.local.js"></script>
+    <script src="./chrome-shim.js"></script>
+    <script src="./background.js"></script>
+    <script type="module" crossorigin src="./assets/index-Bztx_TFS.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CnuVlI0I.css">
+  </head>
+  <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-20">
+
+    <!-- 온보딩 화면 1: 계정 연결 — 완전 신규 설치 또는 로그아웃 상태일 때만 보인다. -->
+    <section id="onboarding-connect" class="hidden fixed inset-0 z-50 bg-slate-50 flex items-center justify-center p-6">
+      <div class="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm p-8 text-center space-y-6">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center text-2xl">▶️</div>
+        <div class="space-y-2">
+          <h1 class="text-xl font-bold text-slate-900">시작하기</h1>
+          <p class="text-sm text-slate-500 leading-relaxed">YouTube 재생목록을 관리하기 위해<br />계정 연결이 필요합니다.</p>
+        </div>
+        <button
+          id="onboarding-connect-btn"
+          type="button"
+          class="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl border border-slate-300 shadow-xs transition-colors cursor-pointer"
+        >
+          <svg class="w-4.5 h-4.5" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+          </svg>
+          <span>Google 계정으로 계속하기</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 온보딩 화면 2: Gemini API Key 입력(선택) — 계정 연결 직후, 처음 한 번만 보인다. -->
+    <section id="onboarding-api-key" class="hidden fixed inset-0 z-50 bg-slate-50 flex items-center justify-center p-6">
+      <div class="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm p-8 space-y-5">
+        <div class="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+          <span>✓</span>
+          <span>계정 연결 완료 (<span id="onboarding-account-email">-</span>)</span>
+        </div>
+        <div class="space-y-1.5">
+          <h2 class="text-base font-bold text-slate-900 whitespace-nowrap">AI 기능을 위한 마지막 한 걸음</h2>
+          <p class="text-xs text-slate-500 leading-relaxed">Gemini API 키를 입력해주세요. (브라우저에만 안전하게 저장됩니다)</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors"
+          >
+            <span>🔑</span>
+            <span>Google AI Studio API 키 발급</span>
+            <span aria-hidden="true">↗</span>
+          </a>
+          <button
+            type="button"
+            id="api-key-guide-btn"
+            class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer shrink-0"
+          >
+            <span>📖</span>
+            <span>발급 방법 보기</span>
+          </button>
+        </div>
+        <input
+          id="onboarding-api-key-input"
+          type="password"
+          placeholder="API 키를 입력해주세요 (예: AIzaSy...)"
+          class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-mono"
+        />
+        <button
+          id="onboarding-finish-btn"
+          type="button"
+          class="w-full px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+        >
+          설정 완료 및 시작하기
+        </button>
+
+        <!-- 키를 입력하지 않고 완료를 눌렀을 때만 나타나는 확인 영역 -->
+        <div id="onboarding-no-key-confirm" class="hidden space-y-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+          <p class="text-xs font-bold text-amber-800">API 키를 설정하지 않았습니다.</p>
+          <p class="text-[11px] text-amber-700 leading-relaxed">등록하지 않아도 기기 내장 모델(Gemini Nano)로 똑같이 이용할 수 있어요. 계속하시겠습니까?</p>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="onboarding-no-key-cancel-btn"
+              class="flex-1 px-3 py-2 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              id="onboarding-no-key-continue-btn"
+              class="flex-1 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            >
+              계속하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Header -->
+    <header id="app-header" class="hidden bg-white border-b border-slate-200 py-3 px-4 md:px-6 sticky top-0 z-10">
+      <div class="max-w-4xl mx-auto flex items-center gap-3">
+        <!-- 구글 로그인 계정 아바타 — 로그인되면 표시(사진이 있으면 사진, 없으면
+             이름 이니셜 원형 배지). 로그인 전에는 숨겨져 있다. -->
+        <div id="account-chip" class="hidden flex items-center gap-2 shrink-0" title="">
+          <img id="account-avatar-img" class="hidden w-8 h-8 rounded-full border border-slate-200 object-cover" alt="" />
+          <div id="account-avatar-fallback" class="hidden flex w-8 h-8 rounded-full bg-slate-700 text-white text-xs font-bold items-center justify-center">
+            <span id="account-avatar-initials"></span>
+          </div>
+        </div>
+
+        <!-- 관리자 화면으로 — 관리자 계정으로 로그인했을 때만 보인다(main.js가
+             hidden과 inline-flex를 함께 넣고 뺀다). 여기에 hidden과 inline-flex를
+             같이 적어두면 안 된다: 컴파일된 CSS에서 .inline-flex가 .hidden보다
+             뒤에 있어 hidden이 무시되고, 관리자가 아닌 사람에게도 버튼이 보인다. -->
+        <button
+          type="button"
+          id="admin-open-btn"
+          class="hidden items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer shrink-0"
+          title="관리자 화면으로 이동"
+          aria-label="관리자 화면으로 이동"
+        >
+          <span>🛡️</span>
+          <span>관리자</span>
+        </button>
+
+        <!-- API Key 등록하기 — 설정 탭의 BYOK 카드로 바로 이동 -->
+        <button
+          type="button"
+          id="header-api-key-btn"
+          class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer shrink-0"
+          title="설정 화면에서 Gemini API Key를 등록합니다"
+        >
+          <span>🔑</span>
+          <span>API Key 발급받기</span>
+        </button>
+
+        <!-- 로그아웃 — 항상 헤더 오른쪽 끝에 고정 -->
+        <button
+          type="button"
+          id="header-logout-btn"
+          class="ml-auto inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+          title="로그아웃"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>로그아웃</span>
+        </button>
+      </div>
+    </header>
+    <main id="app-main" class="hidden max-w-4xl mx-auto p-4 md:p-6">
+      <!-- 탭 1: 전체 재생목록 화면 -->
+      <section id="tab-playlists" class="tab-content space-y-6">
+        <!-- 재생목록 헤더 -->
+        <div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center text-base shrink-0">🎬</span>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 leading-tight">재생목록</h2>
+            <p class="text-[11px] text-slate-400">내 YouTube 재생목록 모음</p>
+          </div>
+        </div>
+
+        <!-- 재생목록 카드 그리드 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="playlists-grid">
+          <!-- JS 동적 렌더링 (순서 이동 컨트롤 포함) -->
+        </div>
+
+        <!-- 하단: 전체 스마트 관리 및 도구 섹션 -->
+        <div class="space-y-4 pt-2">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-base shrink-0">🛠️</span>
+            <div>
+              <h2 class="text-sm font-bold text-slate-900 leading-tight">전체 관리·도구</h2>
+              <p class="text-[11px] text-slate-400">정리와 관리를 도와주는 기능 모음</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 flex-wrap">
+            <!-- 1. 재생목록 장르 분석 (숨김 — "재생목록" 탭 상세 화면에서 이미
+                 analyze-playlist-btn으로 노출 중이라, 메인 화면에는 따로 안 둔다) -->
+            <button
+              id="home-analyze-btn"
+              type="button"
+              class="hidden flex-col items-center justify-center gap-1.5 px-2 py-3.5 bg-purple-50/70 hover:bg-purple-100/80 border border-purple-100 rounded-xl transition-all cursor-pointer group"
+              title="재생목록의 장르 구성을 분석하고 장르별로 분리/이동을 제안합니다"
+            >
+              <div class="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <span class="text-xs font-bold text-slate-800 text-center leading-tight">목록 분석</span>
+            </button>
+
+            <!-- 2. 유튜브 동기화 (숨김) -->
+            <button
+              id="youtube-sync-btn"
+              type="button"
+              class="hidden flex-col items-center justify-center gap-1.5 px-2 py-3.5 bg-red-50/70 hover:bg-red-100/80 border border-red-100 rounded-xl transition-all cursor-pointer group"
+              title="YouTube 계정과 재생목록 실시간 동기화"
+            >
+              <div class="w-9 h-9 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </div>
+              <span class="text-xs font-bold text-slate-800 text-center leading-tight">유튜브 동기화</span>
+            </button>
+
+            <!-- 3. 재생목록 합치기 (숨김) -->
+            <button
+              id="merge-playlists-btn"
+              type="button"
+              class="hidden flex-col items-center justify-center gap-1.5 px-2 py-3.5 bg-indigo-50/70 hover:bg-indigo-100/80 border border-indigo-100 rounded-xl transition-all cursor-pointer group"
+              title="여러 재생목록을 하나로 합치기"
+            >
+              <div class="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform text-sm">
+                🔀
+              </div>
+              <span class="text-xs font-bold text-slate-800 text-center leading-tight">재생목록 합치기</span>
+            </button>
+
+            <!-- 4. 중복 영상 제거 — 재생목록 상세의 전체 재생/목록 분석 버튼과 동일한 스타일로 통일 -->
+            <button
+              id="dedupe-btn"
+              type="button"
+              class="flex items-center justify-center gap-1.5 w-[calc(8rem*var(--ytpl-button-scale))] shrink-0 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="중복된 동영상 일괄 제거"
+            >
+              <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <rect x="9" y="9" width="12" height="12" rx="2" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 15H5a2 2 0 01-2-2V5a2 2 0 012-2h8a2 2 0 012 2v1" />
+              </svg>
+              <span>중복 영상 제거</span>
+            </button>
+
+            <!-- 5. 비공개된 영상 정리 -->
+            <button
+              id="clean-private-btn"
+              type="button"
+              class="flex items-center justify-center gap-1.5 w-[calc(8rem*var(--ytpl-button-scale))] shrink-0 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="비공개로 전환된 영상 정리"
+            >
+              <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <rect x="5" y="11" width="14" height="9" rx="2" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 018 0v4" />
+              </svg>
+              <span>비공개된 영상</span>
+            </button>
+
+            <!-- 5-1. 삭제된 영상 정리 -->
+            <button
+              id="clean-deleted-btn"
+              type="button"
+              class="flex items-center justify-center gap-1.5 w-[calc(8rem*var(--ytpl-button-scale))] shrink-0 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="YouTube에서 삭제된 영상 정리"
+            >
+              <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <circle cx="12" cy="12" r="8" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l6 6" />
+              </svg>
+              <span>삭제된 영상</span>
+            </button>
+
+            <!-- 6. 휴지통 — 개수는 우상단 배지로 표시 -->
+            <button
+              id="trash-bin-btn"
+              type="button"
+              class="relative flex items-center justify-center gap-1.5 w-[calc(8rem*var(--ytpl-button-scale))] shrink-0 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="휴지통 열기"
+            >
+              <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>휴지통</span>
+              <span id="trash-badge" class="absolute -top-1.5 -right-1.5 px-1 py-0.2 bg-rose-500 text-white text-[9px] rounded-full font-bold min-w-[1.1rem] text-center leading-tight">0</span>
+            </button>
+
+            <!-- 7. 태그 자동생성 (숨김 — 검색 탭 진입 시 자동으로 실행됨) -->
+            <button
+              id="home-auto-tag-btn"
+              type="button"
+              class="hidden flex-col items-center justify-center gap-1.5 px-2 py-3.5 bg-emerald-50/70 hover:bg-emerald-100/80 border border-emerald-100 rounded-xl transition-all cursor-pointer group"
+              title="전체 재생목록 및 동영상 AI 스마트 태그 자동 생성"
+            >
+              <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform text-sm">
+                🏷️
+              </div>
+              <span class="text-xs font-bold text-slate-800 text-center leading-tight">태그 자동생성</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 탭 2: 재생목록 내부 (상세) 화면 -->
+      <section id="tab-detail" class="tab-content hidden">
+        <div class="bg-white border border-slate-200 rounded-xl p-5 md:p-6 shadow-xs flex flex-col gap-5">
+          <!-- 재생목록 상단 타이틀 & 스위처 -->
+          <div class="flex flex-col gap-3 pb-4 border-b border-slate-100">
+            <!-- 1줄: 재생목록 제목 및 설명 -->
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <h3 id="detail-playlist-title" class="text-xl font-bold text-slate-900 truncate">인기 뮤직비디오</h3>
+              </div>
+              <p id="detail-playlist-desc" class="text-xs text-slate-500">최신 인기 아티스트들의 고화질 뮤직비디오 모음</p>
+            </div>
+
+            <!-- 2줄: 전체 재생, 목록 분석 버튼 & 정렬 필터 — 한 줄에 다 같이
+                 흐르게 하나의 flex-wrap 행으로 두고, 정렬만 오른쪽 끝에 붙인다
+                 (justify-between으로 따로 떼어두면 폭이 살짝만 부족해도
+                 정렬 전체가 통째로 다음 줄로 밀려났었다). -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button
+                  id="play-all-btn"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="첫 번째 동영상부터 순서대로 전체 재생"
+                >
+                  <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-current" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  <span>전체 재생</span>
+                </button>
+
+                <button
+                  id="analyze-playlist-btn"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="재생목록의 장르 구성을 분석하고 장르별로 분리/이동을 제안합니다"
+                >
+                  <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span>목록 분석</span>
+                </button>
+
+                <button
+                  id="album-merge-btn"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="이 재생목록의 모든 동영상을 다른 재생목록으로 옮기고 현재 재생목록을 삭제합니다"
+                >
+                  <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h7m-7 6h7m-7 6h7M15 6l4 4m0 0l-4 4m4-4H11" />
+                  </svg>
+                  <span>앨범 통합</span>
+                </button>
+
+                <!-- 자동제목정리 토글 -->
+                <div class="inline-flex items-center gap-2 px-1">
+                  <span id="auto-title-cleanup-label" class="text-xs font-semibold text-slate-700 whitespace-nowrap">자동제목정리</span>
+                  <button
+                    id="auto-title-cleanup-btn"
+                    type="button"
+                    role="switch"
+                    aria-checked="false"
+                    aria-labelledby="auto-title-cleanup-label"
+                    class="relative inline-flex h-5 w-9 items-center rounded-full bg-slate-300 transition-colors cursor-pointer shrink-0"
+                    title="지저분한 원본 제목에서 실제 제목만 뽑아내고 나머지는 내용으로 분리합니다"
+                  >
+                    <span id="auto-title-cleanup-knob" class="inline-block h-4 w-4 translate-x-0.5 transform rounded-full bg-white shadow-sm transition-transform duration-200"></span>
+                  </button>
+                </div>
+
+                <!-- 정렬 필터 항목 — 버튼/토글과 같은 줄에 자연스럽게 이어지도록
+                     최대한 컴팩트하게(라벨은 아이콘 하나로, select 패딩도 축소) -->
+                <select id="video-sort-select" class="w-24 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg pl-1.5 pr-1 py-1 text-slate-800 focus:outline-none focus:border-slate-400 cursor-pointer" title="정렬 기준">
+                  <option value="custom">사용자 지정 순</option>
+                  <option value="shuffle">🔀 무작위 순 (셔플)</option>
+                  <option value="newest">최근순</option>
+                  <option value="oldest">오래된순</option>
+                  <option value="views">많이 재생한 순 (조회수)</option>
+                  <option value="title">제목순 (가나다)</option>
+                  <option value="duration">재생시간 긴 순</option>
+                </select>
+            </div>
+          </div>
+
+          <!-- 비디오 플레이어 영역 -->
+          <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-xl border border-slate-800 space-y-0">
+            <!-- 클릭하면 iframe에 실제 YouTube 임베드를 로드해서 앱 안에서 바로 재생한다.
+                 (Error 153 대응: declarativeNetRequest로 임베드 요청에 referer 헤더를
+                 채워 넣어야 재생됨 — background.js의 registerYouTubeEmbedRefererRule 참고)
+                 크롬 확장 프로그램 페이지는 CSP상 YouTube의 공식 IFrame Player API
+                 스크립트(원격 script-src)를 불러올 수 없어서, "영상 종료 감지 후 다음
+                 영상 자동 재생"은 postMessage 대신 영상 재생시간(duration) 기반
+                 타이머로 구현한다 — main.js의 scheduleAutoAdvance 참고. -->
+            <div id="video-player-container" class="bg-slate-900 aspect-video relative flex items-center justify-center cursor-pointer group" title="재생">
+              <img id="player-poster" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity" alt="" />
+              <div id="player-poster-overlay" class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/30"></div>
+              <button id="main-play-btn" type="button" class="relative z-10 w-16 h-16 rounded-full bg-white/20 backdrop-blur-md hover:bg-white/30 text-white flex items-center justify-center transition-transform transform hover:scale-105 cursor-pointer shadow-lg border border-white/20" title="재생">
+                <svg class="w-8 h-8 fill-current translate-x-0.5" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </button>
+              <iframe id="youtube-player-iframe" class="absolute inset-0 w-full h-full hidden" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <!-- 동영상 정보 & 재생목록 이동 -->
+            <div class="bg-slate-950 p-4 border-t border-slate-800 space-y-3">
+              <div class="space-y-1">
+                <h4 id="player-title" class="text-base md:text-lg font-bold leading-snug text-white">Supernova - Official Music Video</h4>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-300 font-mono">
+                  <span id="player-channel" class="font-semibold text-slate-200 whitespace-nowrap">SMTOWN</span>
+                  <span class="text-slate-600 whitespace-nowrap">·</span>
+                  <span id="player-views" class="whitespace-nowrap">조회수 8,500만회</span>
+                </div>
+              </div>
+
+              <!-- 재생목록 안에서 이전/다음/셔플 이동 (임베드 컨트롤과 별개) -->
+              <div class="flex items-center justify-between gap-2 pt-1">
+               <div class="flex items-center gap-2">
+                <button
+                  id="player-prev-btn"
+                  type="button"
+                  class="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  title="이전 동영상"
+                >
+                  <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                  </svg>
+                </button>
+
+                <button
+                  id="player-next-btn"
+                  type="button"
+                  class="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  title="다음 동영상"
+                >
+                  <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                  </svg>
+                </button>
+
+                <button
+                  id="player-shuffle-btn"
+                  type="button"
+                  class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer ml-0.5"
+                  title="셔플 재생 (동영상 무작위 섞기)"
+                >
+                  <svg class="w-4 h-4 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M4 20l5-5m0 0l2 2m5-7l5-5M16 21h5v-5M4 4l11 11" />
+                  </svg>
+                </button>
+               </div>
+
+                <button
+                  id="player-open-youtube-btn"
+                  type="button"
+                  class="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer underline-offset-2 hover:underline"
+                  title="YouTube 탭에서 열기"
+                >
+                  YouTube에서 열기
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 플레이어 하단 옵션 버튼 (고음질추천, 인트로제거) — 숨김 -->
+          <div class="hidden flex-wrap items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2.5">
+            <span class="text-xs font-semibold text-slate-500 hidden sm:inline shrink-0">재생 옵션:</span>
+
+            <!-- 고음질추천 버튼 -->
+            <button
+              id="hq-audio-btn"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 shadow-2xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
+              title="고음질 음원(320kbps) 자동 우선 추천"
+            >
+              <span class="text-amber-500">🎵</span>
+              <span class="whitespace-nowrap">고음질추천</span>
+              <span id="hq-audio-badge" class="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-slate-100 text-slate-500 whitespace-nowrap">OFF</span>
+            </button>
+
+            <!-- 인트로제거 버튼 -->
+            <button
+              id="skip-intro-btn"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 shadow-2xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
+              title="동영상 시작 부분 인트로(5초) 자동 스킵"
+            >
+              <span class="text-blue-500">⚡</span>
+              <span class="whitespace-nowrap">인트로제거</span>
+              <span id="skip-intro-badge" class="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-slate-100 text-slate-500 whitespace-nowrap">OFF</span>
+            </button>
+
+            <div id="player-mode-info" class="text-[11px] text-slate-400 font-medium hidden md:inline ml-auto shrink-0">
+              표준 음질 모드
+            </div>
+          </div>
+
+          <!-- 재생목록 내부 동영상들 -->
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-3">
+              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">동영상목록</h4>
+              <span id="detail-playlist-count" class="text-xs font-mono text-slate-500 whitespace-nowrap">총 5개</span>
+            </div>
+            <div id="video-list" class="space-y-1.5">
+              <!-- JS 동적 렌더링 -->
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- 탭 3: 검색 탭 컨텐츠 -->
+      <section id="tab-search" class="tab-content hidden space-y-4">
+        <!-- 상단: 검색 필터 입력란 -->
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input
+            id="search-input"
+            type="text"
+            placeholder="동영상 제목, 채널명, 키워드로 검색해보세요..."
+            class="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400 shadow-xs transition-all"
+          />
+          <button
+            id="search-clear-btn"
+            type="button"
+            class="hidden absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 태그 필터 & 자동태그 달기 버튼 헤더 -->
+        <div class="flex items-center justify-between gap-2 pt-1">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+            <span>🏷️ 태그 필터</span>
+          </div>
+          <button
+            id="auto-tag-btn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-[calc(0.75rem*var(--ytpl-button-scale))] py-[calc(0.375rem*var(--ytpl-button-scale))] bg-slate-700 hover:bg-slate-800 text-white text-[calc(0.75rem*var(--ytpl-button-scale))] font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+            title="동영상 제목과 채널을 AI 스마트 분석하여 태그를 자동으로 추출합니다"
+          >
+            <svg class="w-[calc(0.875rem*var(--ytpl-button-scale))] h-[calc(0.875rem*var(--ytpl-button-scale))] fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>자동태그 달기</span>
+          </button>
+        </div>
+
+        <!-- 태그 필터 -->
+        <div class="flex items-center gap-2 flex-wrap py-1 text-xs" id="filter-tags-container">
+          <!-- JS 동적 렌더링 -->
+        </div>
+
+        <!-- 하단: 검색 및 필터링된 동영상 목록 -->
+        <div class="space-y-3 pt-1">
+          <div class="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
+            <span>검색 동영상 목록</span>
+            <span id="search-result-count" class="font-mono text-slate-700 font-semibold">0개</span>
+          </div>
+
+          <div id="search-results-list" class="space-y-2.5">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 탭 4: 설정 탭 컨텐츠 -->
+      <section id="tab-settings" class="tab-content hidden">
+        <div class="space-y-4">
+          <!-- 계정 카드 -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+            <h3 class="text-base font-bold mb-3 text-slate-900 flex items-center gap-2">
+              <span>👤</span> 계정
+            </h3>
+            <p id="settings-account-email" class="text-xs text-slate-500 truncate">-</p>
+          </div>
+
+          <!-- 화면 설정 카드 (도움말 + 확대/축소) -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+            <h3 class="text-base font-bold mb-3 text-slate-900 flex items-center gap-2">
+              <span>🖥️</span> 화면 설정
+            </h3>
+            <div class="space-y-3 text-sm divide-y divide-slate-100">
+              <button
+                type="button"
+                id="help-btn"
+                class="w-full flex items-center justify-between py-2 text-left cursor-pointer hover:bg-slate-50 -mx-1 px-1 rounded-lg transition-colors"
+                title="도움말"
+              >
+                <div>
+                  <div class="font-medium text-slate-800 text-xs">도움말</div>
+                  <div class="text-[10px] text-slate-400">앱 사용법과 로그인 안내를 확인합니다</div>
+                </div>
+                <span class="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-50 shrink-0">
+                  <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 9.2a2.5 2.5 0 114.3 1.75c-.66.6-1.3.98-1.3 1.75v.4" />
+                    <circle cx="12" cy="16.5" r="0.65" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+              </button>
+              <div class="flex items-center justify-between pt-3 py-2">
+                <div>
+                  <div class="font-medium text-slate-800 text-xs">화면 확대/축소</div>
+                  <div class="text-[10px] text-slate-400">앱 전체 화면 배율을 조절합니다</div>
+                </div>
+                <div class="flex items-center gap-0.5 shrink-0" role="group" aria-label="화면 확대/축소">
+                  <button type="button" id="zoom-out-btn" class="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent" title="화면 축소">
+                    <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2.25">
+                      <path stroke-linecap="round" d="M5 12h14" />
+                    </svg>
+                  </button>
+                  <button type="button" id="zoom-level-text" class="min-w-11 px-1 h-7 flex items-center justify-center rounded-md text-xs font-semibold text-slate-500 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer whitespace-nowrap" title="100%로 초기화">100%</button>
+                  <button type="button" id="zoom-in-btn" class="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent" title="화면 확대">
+                    <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2.25">
+                      <path stroke-linecap="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 일반 설정 카드 -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+            <h3 class="text-base font-bold mb-3 text-slate-900 flex items-center gap-2">
+              <span>⚙️</span> 일반 설정
+            </h3>
+            <div class="space-y-4 text-sm divide-y divide-slate-100">
+              <div class="flex items-center justify-between py-2">
+                <label for="dark-mode-toggle" class="cursor-pointer">
+                  <div id="dark-mode-toggle-label" class="font-medium text-slate-800 text-xs">다크 모드</div>
+                  <div class="text-[10px] text-slate-400">어두운 테마로 화면을 전환합니다</div>
+                </label>
+                <input id="dark-mode-toggle" type="checkbox" title="다크 모드" class="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
+              </div>
+              <div class="flex items-center justify-between pt-3 py-2">
+                <label for="auto-continue-toggle" class="cursor-pointer">
+                  <div id="auto-continue-toggle-label" class="font-medium text-slate-800 text-xs">자동 연속 재생</div>
+                  <div class="text-[10px] text-slate-400">동영상 종료 시 다음 동영상을 자동으로 연속 재생합니다</div>
+                </label>
+                <input id="auto-continue-toggle" type="checkbox" checked title="자동 연속 재생" class="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
+              </div>
+              <div class="flex items-center justify-between pt-3 py-2">
+                <div>
+                  <div class="font-medium text-slate-800 text-xs">기본 화질 설정</div>
+                  <div class="text-[10px] text-slate-400">플레이어 스트리밍 최적화 화질</div>
+                </div>
+                <span class="text-xs text-slate-600 font-mono font-semibold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">1080p HD</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Fixed Navigation Tab Bar (4개 탭) -->
+    <nav id="app-bottom-nav" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50">
+      <div class="max-w-lg mx-auto flex justify-around">
+        <button
+          data-tab="playlists"
+          class="tab-btn active flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-900 transition-colors cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+          <span class="text-xs font-medium">홈</span>
+        </button>
+
+        <button
+          data-tab="detail"
+          class="tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span class="text-xs font-medium">재생목록</span>
+        </button>
+
+        <button
+          data-tab="search"
+          class="tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <span class="text-xs font-medium">검색</span>
+        </button>
+
+        <button
+          data-tab="settings"
+          class="tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span class="text-xs font-medium">설정</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ==========================================================
+         관리자 화면 — 사용자 화면과 완전히 분리된 별도 화면이다.
+         헤더의 "관리자" 버튼(관리자 계정에만 표시)으로 들어오고, 이 화면의
+         "사용자 화면으로" 버튼으로 돌아간다. 하단 탭 4개:
+         프롬프트 / 사용자 관리 / 로그 / 데이터 업로드.
+         (주의: hidden과 inline-flex/inline-block 같은 display 클래스를 한
+         요소에 같이 쓰면 hidden이 무시된다 — 아래 마크업은 그 조합을 피했다.)
+         ========================================================== -->
+    <header id="admin-header" class="hidden bg-white border-b border-slate-200 py-3 px-4 md:px-6 sticky top-0 z-10">
+      <div class="max-w-4xl mx-auto flex items-center gap-3">
+        <h1 class="text-sm font-bold text-slate-900 shrink-0">관리자 화면</h1>
+        <span id="admin-header-email" class="text-[11px] text-slate-400 truncate"></span>
+        <button
+          type="button"
+          id="admin-to-user-btn"
+          class="ml-auto inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer shrink-0"
+          title="사용자 화면으로 돌아갑니다"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>사용자 화면으로</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="admin-main" class="hidden max-w-4xl mx-auto p-4 md:p-6 space-y-4">
+      <div id="admin-stale-banner" class="hidden text-[11px] leading-relaxed px-3 py-2 rounded-lg border bg-amber-50 border-amber-300 text-amber-800" role="alert">
+        ⚠️ 확장 프로그램이 예전 버전의 백그라운드로 실행 중이라, 이 화면이 최신 상태가 아닐 수 있습니다(예: 기본 프롬프트가 한글이 아니거나, 사용자 목록이 비어 보일 수 있음).
+        주소창에 <b>chrome://extensions</b>를 열고 이 확장 프로그램 카드의 <b>새로고침(⟳)</b> 버튼을 누른 뒤, 이 창을 닫았다가 다시 열어주세요.
+      </div>
+
+      <!-- 탭 1: 프롬프트 -->
+      <section id="admin-tab-prompts" class="admin-tab-content space-y-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+          <h2 class="text-base font-bold text-slate-900">프롬프트</h2>
+
+          <div>
+            <select id="admin-prompt-type-select" aria-label="프롬프트 유형" class="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-slate-800 focus:outline-none focus:border-slate-400 cursor-pointer">
+              <option value="">선택 안함 (일반 요청)</option>
+            </select>
+          </div>
+
+          <p id="admin-prompt-usage" class="hidden text-[11px] text-slate-500 leading-relaxed"></p>
+          <div id="admin-prompt-status" class="hidden text-[11px] px-2.5 py-1.5 rounded-lg border"></div>
+
+          <textarea
+            id="admin-prompt-textarea"
+            rows="6"
+            spellcheck="false"
+            placeholder="예: 재생목록 목록을 좀 더 크게 해줘"
+            class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 resize-y leading-relaxed"
+          ></textarea>
+          <p id="admin-prompt-fixed-note" class="hidden text-[10px] text-slate-400 leading-relaxed"></p>
+
+          <div id="admin-prompt-log" class="hidden text-[11px] px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 space-y-1 max-h-32 overflow-y-auto"></div>
+
+          <div class="flex flex-wrap justify-end gap-2 pt-1">
+            <button type="button" id="admin-prompt-save-btn" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg cursor-pointer transition-colors" title="초안으로만 저장합니다 — 아직 AI에는 반영되지 않습니다">저장하기</button>
+            <button type="button" id="admin-prompt-apply-btn" class="px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors" title="이 프롬프트를 실제 AI 호출에 바로 반영합니다">적용하기</button>
+          </div>
+
+          <!-- 저장된 질문/프롬프트 목록 (선택한 유형별로 따로 보관) -->
+          <div id="admin-saved-requests" class="pt-3 border-t border-slate-100 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-xs font-semibold text-slate-700"><span id="admin-saved-requests-title">저장된 질문</span> <span id="admin-saved-requests-count" class="text-slate-400 font-normal"></span></h3>
+              <span class="text-[10px] text-slate-400">눌러서 입력창에 불러오기</span>
+            </div>
+            <p id="admin-saved-requests-empty" class="text-[11px] text-slate-400">아직 저장된 질문이 없습니다. 질문을 입력하고 "저장하기"를 누르면 여기에 표시됩니다.</p>
+            <ul id="admin-saved-requests-list" class="hidden divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 탭 2: 사용자 관리 -->
+      <section id="admin-tab-users" class="admin-tab-content hidden space-y-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+          <h2 class="text-base font-bold text-slate-900">사용자 관리</h2>
+          <p class="text-[11px] text-slate-400 leading-relaxed">관리자로 지정된 사용자(구글 계정 이메일)만 이 관리자 화면을 볼 수 있습니다.</p>
+
+          <ul id="admin-users-list" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden"></ul>
+
+          <div>
+            <label for="admin-user-email-input" class="text-xs font-semibold text-slate-700 block mb-1.5">관리자로 지정할 사용자 이메일</label>
+            <div class="flex gap-2">
+              <input
+                id="admin-user-email-input"
+                type="email"
+                autocomplete="off"
+                placeholder="example@gmail.com"
+                class="flex-1 min-w-0 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400"
+              />
+              <button type="button" id="admin-user-add-btn" class="shrink-0 px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors">관리자로 지정</button>
+            </div>
+          </div>
+          <p id="admin-users-msg" class="hidden text-[11px]"></p>
+
+          <p class="text-[10px] text-slate-400 leading-relaxed">※ 이 목록(기본 관리자 포함)은 이 브라우저(확장 프로그램)에만 저장됩니다. "기본 관리자" 배지는 앱 코드에 원래 들어있던 관리자라는 표시일 뿐, 수정·삭제를 막지 않습니다. 여기서 모두 지워도 다른 컴퓨터의 브라우저에는 영향이 없고, 그 브라우저에서 처음 열면 코드의 기본 관리자로 다시 채워집니다. 본인 이메일은 스스로 수정·해제할 수 없습니다(잠기는 것을 막기 위함).</p>
+        </div>
+      </section>
+
+      <!-- 탭 3: 로그 -->
+      <section id="admin-tab-logs" class="admin-tab-content hidden space-y-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-base font-bold text-slate-900">로그</h2>
+            <div class="flex items-center gap-2">
+              <select id="admin-log-filter" class="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-800 focus:outline-none focus:border-slate-400 cursor-pointer" title="종류별로 보기">
+                <option value="">전체</option>
+                <option value="ai">AI 호출</option>
+                <option value="prompt">프롬프트</option>
+                <option value="admin">관리자</option>
+                <option value="data">데이터</option>
+                <option value="error">오류</option>
+              </select>
+              <button type="button" id="admin-log-refresh-btn" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors">새로고침</button>
+              <button type="button" id="admin-log-clear-btn" class="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg cursor-pointer transition-colors">로그 지우기</button>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">AI가 언제·어떤 기능에서·어떤 방식(Gemini/Nano)과 프롬프트(기본/사용자 지정)로 동작했는지, 그리고 관리자가 프롬프트를 바꾸거나 사용자를 지정한 기록입니다. AI 호출은 "입력값·출력값·프롬프트 보기"를 누르면 실제 영상 제목 등 입력값과 AI 응답, 사용한 프롬프트 내용까지 볼 수 있습니다(각 필드 1,200자까지). 최근 300건만 보관합니다.</p>
+          <ul id="admin-log-list" class="space-y-1.5 max-h-[55vh] overflow-y-auto"></ul>
+          <p id="admin-log-empty" class="hidden text-center text-xs text-slate-400 py-6">기록이 없습니다.</p>
+        </div>
+      </section>
+
+      <!-- 탭 4: 데이터 업로드 -->
+      <section id="admin-tab-data" class="admin-tab-content hidden space-y-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">데이터 업로드</h2>
+            <p class="text-[11px] text-slate-400 leading-relaxed mt-1">관리자 설정(적용 중인 프롬프트, 추가로 지정한 관리자, 목록·버튼 크기 설정)을 파일로 백업하거나, 다른 브라우저·컴퓨터의 관리자 화면에서 업로드해 그대로 옮길 수 있습니다.</p>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl p-3 space-y-2">
+            <h3 class="text-xs font-bold text-slate-800">1. 설정 내려받기 (백업)</h3>
+            <p class="text-[11px] text-slate-500">현재 관리자 설정을 JSON 파일로 저장합니다.</p>
+            <button type="button" id="admin-data-export-btn" class="px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors">설정 파일 내려받기</button>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl p-3 space-y-2">
+            <h3 class="text-xs font-bold text-slate-800">2. 설정 파일 업로드</h3>
+            <p class="text-[11px] text-slate-500">위에서 내려받은 JSON 파일을 고르면 내용을 미리 보여주고, 확인 후 적용합니다. 파일에 들어 있는 프롬프트는 덮어쓰고, 추가 관리자는 기존 목록에 합쳐집니다.</p>
+            <input id="admin-data-file-input" type="file" accept=".json,application/json" class="block w-full text-xs text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:rounded-lg file:border file:border-slate-200 file:bg-white file:text-slate-700 hover:file:bg-slate-100 file:cursor-pointer" />
+            <div id="admin-data-preview" class="hidden text-[11px] px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 space-y-0.5"></div>
+            <button type="button" id="admin-data-import-btn" class="hidden px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors">업로드한 설정 적용하기</button>
+          </div>
+
+          <p id="admin-data-msg" class="hidden text-[11px]"></p>
+        </div>
+      </section>
+    </main>
+
+    <nav id="admin-bottom-nav" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50">
+      <div class="max-w-lg mx-auto flex justify-around">
+        <button type="button" data-admin-tab="prompts" class="admin-tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-900 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5m-9 5l2.5-2.5H18a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v13z" />
+          </svg>
+          <span class="text-xs font-medium">프롬프트</span>
+        </button>
+        <button type="button" data-admin-tab="users" class="admin-tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span class="text-xs font-medium">사용자 관리</span>
+        </button>
+        <button type="button" data-admin-tab="logs" class="admin-tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span class="text-xs font-medium">로그</span>
+        </button>
+        <button type="button" data-admin-tab="data" class="admin-tab-btn flex-1 py-3 px-2 flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span class="text-xs font-medium">데이터 업로드</span>
+        </button>
+      </div>
+    </nav>
+
+
+    <!-- 재생목록 수정 모달 -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>✏️</span> 재생목록 수정
+          </h3>
+          <button id="modal-close-btn" class="text-slate-400 hover:text-slate-600 text-lg p-1 cursor-pointer">&times;</button>
+        </div>
+
+        <form id="edit-playlist-form" class="space-y-4">
+          <input type="hidden" id="edit-playlist-id" />
+
+          <!-- AI 추천 버튼 & 헤더 -->
+          <div class="flex items-center justify-between bg-purple-50/70 p-2.5 rounded-xl border border-purple-100">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+              <span>✨</span>
+              <span>AI 정보 추천</span>
+            </div>
+            <button
+              id="ai-recommend-btn"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+              title="동영상 목록을 기반으로 최적의 제목과 설명을 추천받습니다"
+            >
+              <svg class="w-3.5 h-3.5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>내용 AI 추천</span>
+            </button>
+          </div>
+
+          <!-- AI 추천결과 컨테이너 (초기 hidden) -->
+          <div id="ai-recommend-container" class="hidden bg-purple-50/80 border border-purple-200/90 rounded-xl p-3.5 space-y-3 transition-all">
+            <!-- 로딩 상태 -->
+            <div id="ai-recommend-loading" class="hidden text-xs text-purple-700 font-medium flex items-center justify-center gap-2 py-3">
+              <svg class="animate-spin h-4 w-4 text-purple-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>AI가 동영상 목록을 분석하여 추천을 생성 중...</span>
+            </div>
+
+            <!-- 추천 결과 영역 -->
+            <div id="ai-recommend-results" class="space-y-3 text-xs hidden">
+              <div>
+                <p class="font-bold text-purple-900 mb-1.5">💡 추천 제목 (클릭 시 입력란에 반영)</p>
+                <div id="ai-recommend-titles" class="space-y-1.5">
+                  <!-- 동적 렌더링 -->
+                </div>
+              </div>
+
+              <div class="pt-1 border-t border-purple-100">
+                <p class="font-bold text-purple-900 mb-1.5">📝 추천 설명 (클릭 시 입력란에 반영)</p>
+                <div id="ai-recommend-descs" class="space-y-1.5">
+                  <!-- 동적 렌더링 -->
+                </div>
+              </div>
+
+              <div class="pt-1 border-t border-purple-100 flex items-center justify-center gap-2">
+                <button
+                  id="ai-recommend-prev-btn"
+                  type="button"
+                  class="p-1.5 bg-white hover:bg-purple-100 text-purple-700 border border-purple-300 rounded-lg transition-colors active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  title="이전 추천"
+                >
+                  <svg class="w-3.5 h-3.5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span id="ai-recommend-position" class="text-[11px] font-bold text-purple-700 tabular-nums min-w-[2.5rem] text-center"></span>
+                <button
+                  id="ai-recommend-next-btn"
+                  type="button"
+                  class="p-1.5 bg-white hover:bg-purple-100 text-purple-700 border border-purple-300 rounded-lg transition-colors active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  title="다음 추천"
+                >
+                  <svg class="w-3.5 h-3.5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="edit-title-input" class="block text-xs font-bold text-slate-700 mb-1">재생목록 이름</label>
+            <input
+              id="edit-title-input"
+              type="text"
+              required
+              class="w-full text-xs font-semibold px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 focus:bg-white"
+              placeholder="재생목록 이름을 입력하세요"
+            />
+          </div>
+          <div>
+            <label for="edit-desc-input" class="block text-xs font-bold text-slate-700 mb-1">재생목록 설명</label>
+            <textarea
+              id="edit-desc-input"
+              rows="3"
+              class="w-full text-xs px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 focus:bg-white resize-none"
+              placeholder="재생목록 설명을 입력하세요"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              id="modal-cancel-btn"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+            >
+              저장하기
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 도움말 모달 -->
+    <div id="help-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl w-full max-w-md min-w-[280px] min-h-[220px] max-h-[85vh] p-6 shadow-xl border border-slate-100 space-y-4 overflow-auto resize">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+            <span>❓</span> 도움말
+          </h3>
+          <button id="help-modal-close-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+        </div>
+
+        <div class="space-y-4 text-xs text-slate-700 leading-relaxed">
+          <div>
+            <h4 class="font-bold text-slate-900 mb-1">AI 기능을 더 빠르게 쓰려면</h4>
+            <ul class="list-disc list-outside pl-4 space-y-1">
+              <li>설정 탭에서 Google API Key(Gemini)를 등록하면 중복 검사·재생목록 추천 같은 AI 기능이 기기 내장 모델 대신 훨씬 빠른 클라우드로 동작합니다.</li>
+              <li>등록하지 않아도 기본 기능은 그대로 사용할 수 있습니다.</li>
+              <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="font-semibold text-amber-600 hover:underline">여기서 무료로 발급받기 ↗</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Key 발급 방법 모달 — 일반 사용자를 위한 단계별 안내 -->
+    <div id="api-key-guide-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl w-full max-w-md min-w-[280px] max-h-[85vh] p-6 shadow-xl border border-slate-100 space-y-4 overflow-auto">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+            <span>📖</span> API Key 발급 방법
+          </h3>
+          <button id="api-key-guide-modal-close-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+        </div>
+
+        <ol class="text-xs text-slate-700 leading-relaxed space-y-3 list-decimal list-outside pl-4">
+          <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="font-semibold text-amber-600 hover:underline">Google AI Studio 발급 페이지 ↗</a>를 엽니다.</li>
+          <li>구글 계정으로 로그인합니다(이미 로그인돼 있으면 건너뜁니다).</li>
+          <li>화면에서 <span class="font-semibold text-slate-900">"Create API key"</span> 버튼을 클릭합니다.</li>
+          <li>
+            "Create a new key"라는 작은 창이 뜹니다.
+            <ul class="list-disc list-outside pl-4 mt-1.5 space-y-1 text-slate-600">
+              <li>"Name your key"(키 이름), "Choose an imported project"(프로젝트) 모두 이미 값이 채워져 있습니다.</li>
+              <li><span class="font-semibold text-slate-900">아무것도 바꾸지 않아도 됩니다.</span></li>
+              <li>오른쪽 아래의 검은색 <span class="font-semibold text-slate-900">"Create key"</span> 버튼만 누르면 됩니다.</li>
+            </ul>
+          </li>
+          <li>생성된 키 옆의 복사 아이콘을 눌러 키를 복사합니다.</li>
+          <li>이 앱으로 돌아와 <span class="font-semibold text-slate-900">Google API Key</span> 입력란에 붙여넣고 <span class="font-semibold text-slate-900">"등록하기"</span>를 누릅니다.</li>
+        </ol>
+
+        <p class="text-[11px] text-slate-400 pt-3 border-t border-slate-100">
+          * 무료로 발급되며, 키는 서버에 보관되지 않고 이 브라우저 안에만 저장됩니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- 휴지통 모달 -->
+    <div id="trash-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[85vh] flex flex-col">
+        <!-- 헤더 -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+          <div class="flex items-center gap-2">
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+              <span>🗑️</span> 휴지통
+            </h3>
+            <span id="trash-modal-count-badge" class="text-xs font-mono font-semibold px-2 py-0.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-full">
+              0개 항목
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              id="empty-trash-btn"
+              type="button"
+              class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg class="w-3.5 h-3.5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>전체 비우기</span>
+            </button>
+            <button id="trash-modal-close-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+          </div>
+        </div>
+
+        <!-- 휴지통 동영상 리스트 스크롤 영역 -->
+        <div id="trash-items-list" class="space-y-3 overflow-y-auto pr-1 flex-1 min-h-[200px]">
+          <!-- JS 동적 렌더링 -->
+        </div>
+
+        <!-- 푸터 -->
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <span>휴지통의 항목은 '복구' 하거나 '완전 삭제'할 수 있습니다.</span>
+          <button
+            type="button"
+            id="trash-modal-cancel-btn"
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors cursor-pointer"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 유튜브 동기화 모달 -->
+    <div id="youtube-sync-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-5">
+        <!-- 헤더 -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">유튜브 계정 동기화</h3>
+              <p class="text-xs text-slate-500">YouTube 데이터와 실시간 상태 맞춤</p>
+            </div>
+          </div>
+          <button id="sync-modal-x-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+        </div>
+
+        <!-- 동기화 진행 상태 영역 -->
+        <div id="sync-progress-container" class="space-y-4 py-2">
+          <div class="flex items-center justify-between text-xs">
+            <span id="sync-step-text" class="font-bold text-slate-800">1/3 유튜브 API 연결 중...</span>
+            <span id="sync-pct-text" class="font-mono text-slate-500 font-semibold">25%</span>
+          </div>
+
+          <!-- 프로그레스 바 -->
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div id="sync-progress-bar" class="bg-red-600 h-2.5 rounded-full transition-all duration-300 w-1/4"></div>
+          </div>
+
+          <p id="sync-detail-msg" class="text-xs text-slate-500 flex items-center gap-2">
+            <svg class="animate-spin h-3.5 w-3.5 text-red-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>유튜브 계정의 재생목록 및 동영상 수신 중...</span>
+          </p>
+        </div>
+
+        <!-- 동기화 완료 후 결과 보고 영역 (초기 숨김) -->
+        <div id="sync-result-box" class="hidden space-y-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div class="flex items-center gap-2 text-emerald-600 font-bold text-sm">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>동기화가 성공적으로 완료되었습니다!</span>
+          </div>
+
+          <ul class="text-xs space-y-1.5 text-slate-600 pt-1">
+            <li class="flex items-center justify-between">
+              <span>• 동기화된 재생목록</span>
+              <span id="sync-count-playlists" class="font-bold text-slate-800">4개</span>
+            </li>
+            <li class="flex items-center justify-between">
+              <span>• 새로 감지되어 추가된 영상</span>
+              <span id="sync-count-added" class="font-bold text-emerald-600">+2개</span>
+            </li>
+            <li class="flex items-center justify-between">
+              <span>• 비공개/삭제 전환 감지</span>
+              <span id="sync-count-unavailable" class="font-bold text-rose-600">0개</span>
+            </li>
+            <li class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200">
+              <span>마지막 동기화 시각:</span>
+              <span id="sync-last-time" class="font-mono">방금 전</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 모달 버튼 -->
+        <div class="pt-2 flex justify-end gap-2">
+          <button
+            type="button"
+            id="sync-modal-confirm-btn"
+            class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 재생목록 합치기 모달 -->
+    <div id="merge-playlists-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto">
+        <!-- 헤더 -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+              <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">재생목록 합치기</h3>
+              <p class="text-xs text-slate-500">여러 재생목록의 동영상을 하나로 병합합니다.</p>
+            </div>
+          </div>
+          <button id="merge-modal-x-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+        </div>
+
+        <!-- Step 1: 대상 재생목록 선택 -->
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-slate-800 flex items-center justify-between">
+            <span>1. 합칠 재생목록 선택 (2개 이상 선택)</span>
+            <span id="merge-selected-count" class="text-[11px] font-semibold text-indigo-600 font-mono">0개 선택됨</span>
+          </label>
+          <div id="merge-playlists-checkboxes" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
+
+        <!-- Step 2: 병합 방식 선택 -->
+        <div class="space-y-3 pt-2 border-t border-slate-100">
+          <label class="text-xs font-bold text-slate-800 block">2. 병합 방식</label>
+          
+          <div class="space-y-2 text-xs">
+            <!-- 옵션 A: 새 재생목록 생성 -->
+            <label class="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-colors">
+              <input type="radio" name="merge-target-type" value="new" checked class="mt-0.5 accent-indigo-600 cursor-pointer" />
+              <div class="flex-1 space-y-1.5">
+                <span class="font-bold text-slate-800 block">새 재생목록으로 생성</span>
+                <input
+                  id="merge-new-title-input"
+                  type="text"
+                  placeholder="예: 2026 베스트 통합 모음"
+                  class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-white"
+                />
+              </div>
+            </label>
+
+            <!-- 옵션 B: 기존 재생목록에 병합 -->
+            <label class="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-colors">
+              <input type="radio" name="merge-target-type" value="existing" class="mt-0.5 accent-indigo-600 cursor-pointer" />
+              <div class="flex-1 space-y-1.5">
+                <span class="font-bold text-slate-800 block">기존 재생목록으로 병합</span>
+                <select
+                  id="merge-target-select"
+                  class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-white cursor-pointer"
+                >
+                  <!-- JS 동적 옵션 생성 -->
+                </select>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 추가 옵션 -->
+        <div class="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-700">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input id="merge-opt-dedupe" type="checkbox" checked title="중복 동영상 자동 제거" class="accent-indigo-600 rounded cursor-pointer" />
+            <span>중복 동영상 자동 제거</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input id="merge-opt-delete-source" type="checkbox" title="병합 완료 후 선택한 원본 재생목록 삭제" class="accent-indigo-600 rounded cursor-pointer" />
+            <span class="text-slate-600">병합 완료 후 선택한 원본 재생목록 삭제</span>
+          </label>
+        </div>
+
+        <!-- 푸터 버튼 -->
+        <div class="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+          <button
+            type="button"
+            id="merge-modal-cancel-btn"
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            id="merge-modal-submit-btn"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <svg class="w-3.5 h-3.5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>재생목록 합치기</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 중복 영상 결과 모달 -->
+    <div id="dedupe-results-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <rect x="4" y="7" width="11" height="11" rx="2"></rect>
+                <rect x="9" y="3" width="11" height="11" rx="2"></rect>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">중복 영상</h3>
+              <p id="dedupe-modal-summary" class="text-xs text-slate-500">중복 영상을 검색하고 있습니다...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button id="dedupe-modal-refresh-btn" type="button" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer" title="새로고침 (다시 검사)">
+              <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4.5 9a8 8 0 0114.5-3.5M19.5 15a8 8 0 01-14.5 3.5" />
+              </svg>
+            </button>
+            <button id="dedupe-modal-x-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+          </div>
+        </div>
+
+        <div id="dedupe-modal-body" class="space-y-3 overflow-y-auto">
+          <!-- JS 동적 렌더링 -->
+        </div>
+
+        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+          <span id="dedupe-modal-selected-count" class="text-[11px] font-semibold text-slate-500">0개 선택됨</span>
+          <div class="flex items-center gap-2">
+            <button type="button" id="dedupe-modal-select-recommended-btn" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer">
+              삭제 권장 항목 선택
+            </button>
+            <button
+              type="button"
+              id="dedupe-modal-delete-btn"
+              disabled
+              class="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              선택 삭제
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 비공개/삭제 영상 정리 모달 -->
+    <div id="cleanup-results-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div id="cleanup-modal-icon" class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 text-sm">
+              🧹
+            </div>
+            <div>
+              <h3 id="cleanup-modal-title" class="text-base font-bold text-slate-900">영상 정리</h3>
+              <p id="cleanup-modal-summary" class="text-xs text-slate-500">확인하고 있습니다...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button id="cleanup-modal-refresh-btn" type="button" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer" title="새로고침 (다시 확인)">
+              <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4.5 9a8 8 0 0114.5-3.5M19.5 15a8 8 0 01-14.5 3.5" />
+              </svg>
+            </button>
+            <button id="cleanup-modal-x-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer">&times;</button>
+          </div>
+        </div>
+
+        <div id="cleanup-modal-body" class="space-y-3 overflow-y-auto">
+          <!-- JS 동적 렌더링 -->
+        </div>
+
+        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+          <span id="cleanup-modal-selected-count" class="text-[11px] font-semibold text-slate-500">0개 선택됨</span>
+          <button
+            type="button"
+            id="cleanup-modal-delete-btn"
+            disabled
+            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            선택 삭제
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 재생목록 목록 분석 모달 -->
+    <div id="playlist-analysis-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto">
+        <!-- 헤더 -->
+        <div class="flex items-start justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+              <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                <span>📊</span> 재생목록 AI 분석
+              </h3>
+              <p class="text-xs text-slate-500 whitespace-nowrap">장르를 분석해 정리를 제안합니다</p>
+            </div>
+          </div>
+          <button id="analysis-modal-x-btn" class="text-slate-400 hover:text-slate-600 text-xl px-1.5 py-0.5 rounded-lg hover:bg-slate-100 cursor-pointer shrink-0">&times;</button>
+        </div>
+
+        <!-- 분석 대상 재생목록 선택 -->
+        <div class="flex items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <span class="text-xs font-bold text-slate-700 shrink-0">분석 대상 재생목록:</span>
+          <select id="analysis-target-select" class="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-purple-500 cursor-pointer flex-1 min-w-0">
+            <!-- JS 동적 세팅 -->
+          </select>
+        </div>
+
+        <!-- 로딩 상태 스피너 -->
+        <div id="analysis-loading-box" class="py-12 text-center space-y-3 hidden">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-600 border-t-transparent"></div>
+          <p class="text-xs font-bold text-slate-700">재생목록 콘텐츠 및 영상 속성 분석 중...</p>
+        </div>
+
+        <!-- 분석 결과 컨테이너 -->
+        <div id="analysis-result-container" class="space-y-4">
+          <!-- 지금 보고 있는 결과가 무슨 모드인지 + AI 요약을 결과 맨 위에서
+               바로 보여준다(예전엔 비율 막대 밑 카드에 묻혀 있어서 눈에
+               잘 안 띄었다). 커스텀 질문 결과일 때만 "기본 분석으로
+               돌아가기"를 함께 보여준다. -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2 min-w-0">
+              <span id="analysis-mode-badge" class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap"></span>
+              <p id="analysis-mode-summary" class="text-xs text-slate-600 leading-relaxed"></p>
+            </div>
+            <button type="button" id="analysis-back-to-default-btn" class="hidden shrink-0 text-[11px] font-semibold text-slate-500 hover:text-slate-700 underline underline-offset-2 cursor-pointer">← 기본 분석으로</button>
+          </div>
+
+          <!-- 질문을 이해하지 못했거나 AI 호출이 실패했을 때, 에러 문구만
+               보여주고 끝내는 대신 바로 다시 시도해볼 수 있는 예시를 보여준다. -->
+          <div id="analysis-prompt-error-box" class="hidden p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+            <p id="analysis-prompt-error-text" class="text-xs font-semibold text-rose-700"></p>
+            <p class="text-[11px] text-rose-500">이렇게 다시 물어보세요:</p>
+            <div id="analysis-prompt-error-suggestions" class="flex flex-wrap gap-1.5">
+              <!-- JS 동적 예시 칩 -->
+            </div>
+          </div>
+
+          <!-- 장르 분류 결과 화면 (기본 장르 분석, 또는 프롬프트로 "그룹으로 나눠줘" 요청 시) -->
+          <div id="analysis-genre-view" class="space-y-4">
+            <!-- 1. 장르/속성 비중 프로그레스 바 -->
+            <div class="bg-purple-50/50 border border-purple-100 rounded-xl p-4 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-purple-900 flex items-center gap-1">
+                  <span>📈</span> 분석된 장르
+                </span>
+                <span id="analysis-total-count" class="text-purple-600 font-mono font-bold">총 0개 동영상</span>
+              </div>
+
+              <!-- 구성 비율 바 -->
+              <div id="analysis-genre-bar-container" class="w-full bg-slate-200 rounded-full h-3 overflow-hidden flex">
+                <!-- JS 동적 비율 바 -->
+              </div>
+
+              <div id="analysis-genre-legend" class="flex items-center gap-3 text-[11px] font-medium text-slate-600 flex-wrap pt-1">
+                <!-- JS 동적 범례 -->
+              </div>
+            </div>
+
+            <!-- 2. 장르 분석 인사이트 카드들 — AI 맞춤 그룹 결과일 땐 요약이
+                 위쪽 배지 옆으로 옮겨가서 이 섹션 자체가 비므로 JS가 숨긴다. -->
+            <div id="analysis-insights-section" class="space-y-3">
+              <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                <span>💡</span> 분석 결과 및 개선 제안
+              </h4>
+
+              <div id="analysis-insights-list" class="space-y-2.5">
+                <!-- JS 동적 카드 생성 -->
+              </div>
+            </div>
+
+            <!-- 3. 그룹별 영상 목록 — 비중 바/카드만으로는 실제로 어떤 영상이
+                 어디 속했는지 알 수 없어서, 그룹마다 실제 영상 목록을 보여준다. -->
+            <div class="space-y-2">
+              <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                <span>🎬</span> 그룹별 영상 목록
+              </h4>
+              <div id="analysis-genre-video-list" class="space-y-3">
+                <!-- JS 동적 렌더링 -->
+              </div>
+            </div>
+
+            <!-- 4. 대화형 실행 액션 버튼들 -->
+            <div class="pt-3 border-t border-slate-100 space-y-2">
+              <h4 class="text-xs font-bold text-slate-800">권장 조치 실행</h4>
+              <div id="analysis-actions-box" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <!-- JS 동적 액션 버튼들 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 검색 결과 화면 (프롬프트로 특정 영상을 찾아달라고 요청했을 때) -->
+          <div id="analysis-search-view" class="hidden space-y-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-purple-900 flex items-center gap-1">
+                <span>🔍</span> 검색 결과
+              </span>
+              <span id="analysis-search-count" class="text-purple-600 font-mono font-bold">0개</span>
+            </div>
+
+            <p id="analysis-search-summary" class="text-xs text-slate-600 leading-relaxed"></p>
+
+            <div id="analysis-search-list" class="space-y-1.5">
+              <!-- JS 동적 렌더링 -->
+            </div>
+
+            <div id="analysis-search-pagination" class="hidden items-center justify-between pt-1">
+              <button type="button" id="analysis-search-prev-btn" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">← 이전</button>
+              <span id="analysis-search-page-label" class="text-[11px] text-slate-500 font-semibold">1 / 1</span>
+              <button type="button" id="analysis-search-next-btn" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">다음 →</button>
+            </div>
+
+            <button type="button" id="analysis-search-save-btn" class="hidden w-full px-3 py-2 text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white">
+              <span>💾</span> <span>이 영상들로 새 재생목록 만들기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 프롬프트로 새롭게 분석하기 -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+          <!-- 눌러보면 바로 결과를 보여주는 예시 질문들 — 뭘 물어볼 수 있는지
+               감이 안 잡히는 사용자를 위한 것. -->
+          <div id="analysis-prompt-suggestions" class="flex flex-wrap gap-1.5">
+            <!-- JS 동적 예시 칩 -->
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              id="analysis-prompt-input"
+              type="text"
+              placeholder="원하는 분석 방식을 입력해보세요 (예: 분위기별로 나눠줘)"
+              class="flex-1 min-w-0 text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-500"
+            />
+            <button
+              type="button"
+              id="analysis-prompt-run-btn"
+              class="px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              ✨ 질문하기
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400 leading-relaxed">💡 "~찾아줘"라고 물으면 조건에 맞는 영상만 찾아드리고, "~나눠줘"라고 물으면 그룹으로 정리해서 보여드려요.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 앨범통합(재생목록 통합) 다이얼로그 -->
+    <div id="album-merge-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto flex flex-col">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h7m-7 6h7m-7 6h7M15 6l4 4m0 0l-4 4m4-4H11" />
+            </svg>
+          </div>
+          <h3 class="text-base font-bold text-slate-900">앨범통합</h3>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3">
+          <div>
+            <label for="album-merge-source-select" class="block text-xs font-semibold text-slate-700 mb-1.5">통합할 재생목록</label>
+            <select id="album-merge-source-select" class="w-full text-xs font-semibold bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer">
+              <!-- JS 동적 세팅 -->
+            </select>
+          </div>
+          <div>
+            <label for="album-merge-target-select" class="block text-xs font-semibold text-slate-700 mb-1.5">통합될 대상 재생목록</label>
+            <select id="album-merge-target-select" class="w-full text-xs font-semibold bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer">
+              <!-- JS 동적 세팅 -->
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">이동할 동영상 선택</span>
+            <div class="flex items-center gap-2">
+              <span id="album-merge-selected-count" class="text-[11px] text-slate-400 font-semibold">0 / 0개 선택됨</span>
+              <button type="button" id="album-merge-toggle-all-btn" class="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer">전체 선택/해제</button>
+            </div>
+          </div>
+          <div id="album-merge-video-list" class="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-1.5">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <p id="album-merge-warning-text" class="text-xs text-amber-800 leading-relaxed">현재 재생목록이 삭제되고 모든 동영상은 지정한 앨범(재생목록)으로 이동됩니다.<br />실행하시겠습니까?</p>
+        </div>
+
+        <div id="album-merge-progress" class="hidden items-center justify-center gap-2 py-1 text-slate-400 text-xs">
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span id="album-merge-progress-text">통합하는 중입니다...</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" id="album-merge-cancel-btn" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer">취소</button>
+          <button type="button" id="album-merge-confirm-btn" class="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer">실행</button>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
+
