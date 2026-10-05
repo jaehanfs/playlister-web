@@ -1044,7 +1044,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 9;
+const PROMPT_DEFAULTS_VERSION = 10;
 
 const PROMPT_TYPES = [
   {
@@ -1052,35 +1052,35 @@ const PROMPT_TYPES = [
     label: "표준제목",
     usage: "- 용도: 영상 제목 정리\n- 실행: '자동제목정리'를 켤 때\n- 결과: 제목 + 부가 내용으로 나눠 저장",
     fixedNote: "- 자동 첨부: 출력 형식(JSON), 영상 목록",
-    defaultText: "작업: 영상 제목을 표준 제목으로 정리\n- 제거: 홍보 문구, 이모지, 해시태그, 화질 표기(4K, MV 등)\n- \"title\": 핵심 제목만 남김\n- \"content\": 아티스트·부가 설명 (없으면 빈칸)\n- 없는 내용 지어내기 금지",
+    defaultText: "작업: 영상 제목 정리\n- 제거: 홍보 문구, 이모지, 해시태그, 화질 표기(4K, MV)\n- \"title\": 핵심 제목만\n- \"content\": 아티스트·부가 설명 (없으면 빈칸)\n- 지어내기 금지",
   },
   {
     id: "tag",
     label: "태그",
     usage: "- 용도: 영상별 기본 태그 분류\n- 실행: 재생목록을 처음 불러올 때\n- 결과: 영상마다 태그 표시",
     fixedNote: "- 자동 첨부: 출력 형식(JSON), 영상 목록",
-    defaultText: "작업: 영상별 한국어 태그 부여\n- 개수: 영상당 2~4개\n- 종류: 장르, 주제, 형식, 분위기\n- 제목에 장르가 없어도 내용 추론\n- 내용이 다르면 태그도 다르게\n- 금지: 제목(또는 제목 일부), 중복 태그",
+    defaultText: "작업: 영상별 한국어 태그 부여\n- 개수: 2~4개\n- 범위: 장르, 주제, 형식, 분위기\n- 제목에 없어도 내용 추론\n- 내용이 다르면 태그도 다르게\n- 금지: 제목 복사, 중복 태그",
   },
   {
     id: "playlistInfo",
     label: "재생목록 추천",
     usage: "- 용도: 재생목록 제목·설명 추천\n- 실행: 재생목록 수정 화면의 '내용 AI 추천'을 누를 때\n- 결과: 추천 후보를 눌러 입력칸에 채움",
     fixedNote: "- {{COUNT}}: 추천 개수로 자동 변경\n- 자동 첨부: 현재 제목·설명, 영상 제목 목록, 출력 형식(JSON)",
-    defaultText: "작업: 재생목록의 제목·설명 추천 (한국어)\n- 제목 {{COUNT}}개, 설명 {{COUNT}}개\n- 제목: 25자 이내, 짧게\n- 설명: 1~2문장\n- 후보마다 분위기 다르게",
+    defaultText: "작업: 재생목록 제목·설명 추천\n- 개수: 제목 {{COUNT}}개, 설명 {{COUNT}}개\n- 제목: 25자 이내\n- 설명: 1~2문장\n- 후보별로 분위기 차별화\n- 언어: 한국어",
   },
   {
     id: "playlistAnalysis",
     label: "목록 분석",
     usage: "- 용도: 재생목록 분석 질문 처리\n- 실행: '목록 분석'에서 질문을 입력할 때\n- 질문 종류\n  · 찾기: 조건에 맞는 영상만 보여줌\n  · 나누기: 그룹으로 정리\n  · 일반 질문: 목록을 보고 답변",
     fixedNote: "- 자동 첨부: 입력한 질문, 출력 형식(JSON), 영상 목록",
-    defaultText: "작업: 아래 요청대로 재생목록 분석 (요청 유형별로 \"mode\" 결정)\n1. 영상 찾기\n   - \"mode\": \"search\"\n   - \"matches\": 조건에 맞는 영상 번호만\n2. 나누기·정리\n   - \"mode\": \"group\"\n   - \"groups\": 모든 영상 포함\n   - 그룹 이름: 12자 이내, 애매하면 \"기타\"\n3. 일반 질문 (예: \"이 목록 어떤 것 같아?\")\n   - \"mode\": \"answer\"\n   - \"answer\": 개조식 3~5줄 (줄마다 \"- \"로 시작, 짧은 명사형·\"~함\"으로 끝맺음)\n   - 영상 제목을 근거로 작성\n공통\n- 쓰지 않는 \"matches\"/\"groups\": 빈 배열\n- \"summary\": 결과를 한 줄로",
+    defaultText: "작업: 요청 유형별 재생목록 분석\n- 찾기: \"mode\"=\"search\", \"matches\"=해당 영상 번호\n- 나누기: \"mode\"=\"group\", \"groups\"=전체 영상 분류 (이름 12자 이내, 애매하면 \"기타\")\n- 일반 질문: \"mode\"=\"answer\", \"answer\"=개조식 3~5줄 (\"- \"로 시작, 명사형·\"~함\" 종결, 제목 근거)\n- 빈 배열: 쓰지 않는 \"matches\"/\"groups\"\n- \"summary\": 한 줄 요약",
   },
   {
     id: "adminCommand",
     label: "일반 요청 해석",
     usage: "- 용도: 문장으로 쓴 요청을 AI가 알아서 실행\n- 실행: 위 선택 상자를 '선택 안함'으로 두고 \"적용하기\" 클릭\n- 가능한 일\n  · 화면 크기 조절\n  · AI 기능에 지시 추가\n  · 설정 되돌리기\n- \"저장하기\": 질문만 보관 (실행 안 함)",
     fixedNote: "- 자동 첨부: 입력한 요청 문장\n- 주의: 잘못 고치면 일반 요청이 동작하지 않을 수 있음\n- 복구: '선택 안함'에서 \"프롬프트를 원래대로 되돌려줘\" 입력",
-    defaultText: "작업: 관리자 요청을 아래 동작 중 하나로 해석 (돌려 말해도 핵심 의도에 가장 가까운 동작 선택)\n1. \"resize\": 화면 크기 조절\n   - \"target\": \"thumbnail\"(썸네일), \"text\"(제목 글자), \"button\"(전체 재생·목록 분석 등 주요 버튼), \"both\"(목록 썸네일+글자, 재생목록/영상 목록 요청일 때만)\n   - 버튼 요청: 반드시 \"button\"\n   - \"scaleDelta\": 변화 비율 (0.2 = 20% 키움, -0.15 = 15% 줄임, 숫자 없이 크게/작게 = ±0.2)\n2. \"set_prompt\": AI 기능의 동작 변경\n   - \"promptCategory\": \"tag\"(태그), \"standardTitle\"(표준제목), \"playlistInfo\"(재생목록 추천), \"playlistAnalysis\"(목록 분석)\n   - \"promptText\": 그 기능 프롬프트 끝에 붙일 한국어 지시문 (관리자에게 하는 답변이 아닌 독립된 지시문)\n   - 중복 영상 판정은 영상 ID만 사용하고 프롬프트를 쓰지 않음 → 관련 요청은 \"unsupported\"\n3. \"reset\": 되돌리기\n   - \"resetTarget\": \"prompts\"(프롬프트만), \"scale\"(크기만), \"all\"(둘 다, 불분명하면 이것)\n4. \"unsupported\": 위에 없는 요청\n   - 지원 여부를 \"summary\"에 짧게 설명\n공통\n- \"summary\"(한국어): 이해한 내용을 한 줄로\n- 응답: JSON만",
+    defaultText: "작업: 관리자 요청을 아래 동작 중 하나로 해석 (돌려 말해도 핵심 의도 기준)\n1. \"resize\": 화면 크기 조절\n   - \"target\": \"thumbnail\"(썸네일) / \"text\"(제목 글자) / \"button\"(전체 재생·목록 분석 등 주요 버튼) / \"both\"(썸네일+글자, 재생목록/영상 목록 요청만)\n   - 버튼 요청은 반드시 \"button\"\n   - \"scaleDelta\": 0.2 = 20% 키움, -0.15 = 15% 줄임 (숫자 없으면 크게 +0.2, 작게 -0.2)\n2. \"set_prompt\": AI 기능에 지시 추가\n   - \"promptCategory\": \"tag\" / \"standardTitle\" / \"playlistInfo\" / \"playlistAnalysis\"\n   - \"promptText\": 해당 프롬프트 끝에 붙일 독립된 한국어 지시문 (관리자에게 하는 답변 아님)\n   - 중복 영상 판정 요청은 \"unsupported\" (영상 ID만 사용, 프롬프트 없음)\n3. \"reset\": 되돌리기\n   - \"resetTarget\": \"prompts\" / \"scale\" / \"all\" (불분명하면 \"all\")\n4. \"unsupported\": 그 외 요청 (지원 여부를 \"summary\"에 설명)\n공통\n- \"summary\": 이해한 내용 한 줄 (한국어)\n- 응답: JSON만",
   },
 ];
 
@@ -1257,6 +1257,88 @@ async function readAdminLogSettings() {
   return { enabled: !(raw && raw.enabled === false) };
 }
 
+// 로그의 "지시"는 항상 JSON으로 남긴다. 개조식 지시문(줄마다 "- ", "1. " 같은 머리표와 들여쓰기)을
+// 줄 구조에 맞춰 중첩 JSON으로 바꾼다. 머리표 없는 줄 뒤에 같은 들여쓰기로 이어지는 머리표 줄은 그 줄의
+// 하위 항목이다. "이름: 내용" 꼴은 이름을 키로, 나머지는 값으로 쓴다. 구조가 없는 글은 줄 배열이 된다.
+function promptTextToJson(text) {
+  const items = String(text)
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter(function (line) { return line.trim() !== ""; })
+    .map(function (line) {
+      const indent = line.length - line.trimStart().length;
+      const body = line.trim();
+      const markerMatch = /^(?:[-·•*]|\d+[.)])\s+/.exec(body);
+      return { indent: indent, marked: Boolean(markerMatch), text: (markerMatch ? body.slice(markerMatch[0].length) : body).trim(), children: [] };
+    });
+  const root = { children: [] };
+  const stack = [];
+  items.forEach(function (item) {
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1];
+      const isChild = top.indent < item.indent || (top.indent === item.indent && !top.marked && item.marked);
+      if (isChild) {
+        break;
+      }
+      stack.pop();
+    }
+    (stack.length > 0 ? stack[stack.length - 1] : root).children.push(item);
+    stack.push(item);
+  });
+
+  const unquote = function (value) { return value.replace(/^"([^"]*)"$/, "$1"); };
+  const splitKeyValue = function (text) {
+    const match = /^(.{1,24}?):\s+(.+)$/.exec(text);
+    return match && !match[1].includes(", ") ? [unquote(match[1].trim()), match[2].trim()] : null;
+  };
+  const convert = function (siblings) {
+    const object = {};
+    const notes = [];
+    siblings.forEach(function (node) {
+      let key = null;
+      let value = null;
+      if (node.children.length > 0) {
+        const kv = splitKeyValue(node.text);
+        const inner = convert(node.children);
+        key = kv ? kv[0] : unquote(node.text.replace(/:$/, ""));
+        if (kv) {
+          value = Array.isArray(inner) ? { "내용": kv[1], "항목": inner } : Object.assign({ "내용": kv[1] }, inner);
+        } else {
+          value = inner;
+        }
+      } else {
+        const kv = splitKeyValue(node.text);
+        if (kv) {
+          key = kv[0];
+          value = kv[1];
+        }
+      }
+      if (key !== null && !(key in object)) {
+        object[key] = value;
+      } else {
+        notes.push(node.children.length > 0 ? { [node.text]: convert(node.children) } : node.text);
+      }
+    });
+    if (Object.keys(object).length === 0) {
+      return notes;
+    }
+    if (notes.length > 0) {
+      object["참고"] = notes;
+    }
+    return object;
+  };
+  return convert(root.children);
+}
+
+function isJsonText(text) {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
 function appendAdminLog(kind, text, extra) {
   adminLogQueue = adminLogQueue.then(async function () {
     try {
@@ -1272,7 +1354,8 @@ function appendAdminLog(kind, text, extra) {
         // instruction: 지시문 / provided: AI에게 제공한 정보 / result: AI의 결과 /
         // prompt: 코드가 만들어 AI에게 실제로 보낸 최종 프롬프트 전문
         ["instruction", "provided", "result", "prompt"].forEach(function (field) {
-          const text = formatLogField(extra[field]);
+          const raw = field === "instruction" && typeof extra[field] === "string" ? promptTextToJson(extra[field]) : extra[field];
+          const text = formatLogField(raw);
           if (text) entry[field] = text;
         });
       }
@@ -1317,8 +1400,15 @@ async function purgeLegacyAdminLogs() {
     try {
       const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
       const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
-      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); });
-      if (kept.length !== list.length) {
+      let migrated = false;
+      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); }).map(function (entry) {
+        if (typeof entry.instruction === "string" && entry.instruction && !isJsonText(entry.instruction)) {
+          migrated = true;
+          return Object.assign({}, entry, { instruction: formatLogField(promptTextToJson(entry.instruction)) });
+        }
+        return entry;
+      });
+      if (kept.length !== list.length || migrated) {
         await chrome.storage.local.set({ [ADMIN_LOG_KEY]: kept });
       }
     } catch (_error) {
