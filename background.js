@@ -1044,43 +1044,43 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 8;
+const PROMPT_DEFAULTS_VERSION = 9;
 
 const PROMPT_TYPES = [
   {
     id: "standardTitle",
     label: "표준제목",
-    usage: "- 용도: 영상 제목을 \"표준 제목\"으로 정리\n- 실행 시점: '자동제목정리' 토글을 켤 때\n- 결과: 제목 + 부가 내용(아티스트 등)으로 나뉘어 저장",
-    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용\n  · 출력 형식(JSON)\n  · 영상 목록(id / 제목 / 채널)",
-    defaultText: "영상 제목을 표준 제목으로 정리하세요.\n- 홍보 문구, 이모지, 해시태그, 화질 표기(4K, MV 등)는 뺍니다.\n- 핵심 제목만 \"title\"에 남깁니다.\n- 아티스트·부가 설명은 \"content\"에 따로 적고, 없으면 비웁니다.\n- 없는 내용은 지어내지 않습니다.",
+    usage: "- 용도: 영상 제목 정리\n- 실행: '자동제목정리'를 켤 때\n- 결과: 제목 + 부가 내용으로 나눠 저장",
+    fixedNote: "- 자동 첨부: 출력 형식(JSON), 영상 목록",
+    defaultText: "작업: 영상 제목을 표준 제목으로 정리\n- 제거: 홍보 문구, 이모지, 해시태그, 화질 표기(4K, MV 등)\n- \"title\": 핵심 제목만 남김\n- \"content\": 아티스트·부가 설명 (없으면 빈칸)\n- 없는 내용 지어내기 금지",
   },
   {
     id: "tag",
     label: "태그",
-    usage: "- 용도: 영상마다 기본 태그를 분류\n- 실행 시점: 재생목록을 처음 불러올 때\n- 결과: 영상별 태그가 목록과 필터에 표시",
-    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용\n  · 출력 형식(JSON)\n  · 영상 목록(id / 제목 / 채널)",
-    defaultText: "영상마다 한국어 태그를 붙이세요.\n- 영상당 2~4개를 붙입니다.\n- 장르·주제·형식·분위기를 나타내는 태그를 씁니다.\n- 제목에 장르가 없어도 내용을 추론합니다.\n- 내용이 다른 영상은 태그도 다르게 줍니다.\n- 제목 자체나 제목의 일부, 같은 태그의 중복은 쓰지 않습니다.",
+    usage: "- 용도: 영상별 기본 태그 분류\n- 실행: 재생목록을 처음 불러올 때\n- 결과: 영상마다 태그 표시",
+    fixedNote: "- 자동 첨부: 출력 형식(JSON), 영상 목록",
+    defaultText: "작업: 영상별 한국어 태그 부여\n- 개수: 영상당 2~4개\n- 종류: 장르, 주제, 형식, 분위기\n- 제목에 장르가 없어도 내용 추론\n- 내용이 다르면 태그도 다르게\n- 금지: 제목(또는 제목 일부), 중복 태그",
   },
   {
     id: "playlistInfo",
     label: "재생목록 추천",
-    usage: "- 용도: 재생목록의 제목·설명 후보 추천\n- 실행 시점: 재생목록 수정 화면에서 '내용 AI 추천'을 누를 때\n- 결과: 추천 후보를 눌러 제목·설명 입력칸에 바로 채움",
-    fixedNote: "- {{COUNT}}: 추천 개수로 자동 치환\n- 이 지시문 뒤에 자동으로 붙는 내용\n  · 현재 제목·설명\n  · 영상 제목 목록\n  · 출력 형식(JSON)",
-    defaultText: "이 재생목록의 영상 제목을 보고 제목과 설명을 한국어로 추천하세요.\n- 제목 {{COUNT}}개, 설명 {{COUNT}}개를 추천합니다.\n- 제목은 25자 이내로 짧게 씁니다.\n- 설명은 1~2문장으로 씁니다.\n- 후보마다 분위기를 다르게 씁니다.",
+    usage: "- 용도: 재생목록 제목·설명 추천\n- 실행: 재생목록 수정 화면의 '내용 AI 추천'을 누를 때\n- 결과: 추천 후보를 눌러 입력칸에 채움",
+    fixedNote: "- {{COUNT}}: 추천 개수로 자동 변경\n- 자동 첨부: 현재 제목·설명, 영상 제목 목록, 출력 형식(JSON)",
+    defaultText: "작업: 재생목록의 제목·설명 추천 (한국어)\n- 제목 {{COUNT}}개, 설명 {{COUNT}}개\n- 제목: 25자 이내, 짧게\n- 설명: 1~2문장\n- 후보마다 분위기 다르게",
   },
   {
     id: "playlistAnalysis",
     label: "목록 분석",
-    usage: "- 용도: 재생목록 분석 요청을 해석\n- 실행 시점: 재생목록의 '목록 분석'에서 질문을 입력할 때\n- 요청 유형\n  · 찾기: 조건에 맞는 영상만 보여줌\n  · 나누기: 그룹으로 정리해서 보여줌\n  · 일반 질문: 목록 내용을 근거로 답변",
-    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용\n  · 사용자가 입력한 요청\n  · 출력 형식(JSON)\n  · 영상 목록(번호 매김)",
-    defaultText: "아래 요청대로 재생목록을 분석하세요. 요청 유형에 따라 \"mode\"를 정합니다.\n1. 영상을 찾는 요청\n   - \"mode\"를 \"search\"로 합니다.\n   - 조건에 맞는 영상 번호만 \"matches\"에 넣습니다.\n2. 나누거나 정리하는 요청\n   - \"mode\"를 \"group\"으로 합니다.\n   - 모든 영상을 \"groups\"에 넣습니다.\n   - 그룹 이름은 12자 이내로 쓰고, 애매한 영상은 \"기타\"로 묶습니다.\n3. 일반 질문(예: \"이 목록 어떤 것 같아?\")\n   - \"mode\"를 \"answer\"로 합니다.\n   - 영상 제목을 근거로 한국어 3~5문장 답변을 \"answer\"에 적습니다.\n공통 규칙\n- 쓰지 않는 쪽(\"matches\"/\"groups\")은 빈 배열로 둡니다.\n- 결과는 한 문장으로 \"summary\"에 적습니다.",
+    usage: "- 용도: 재생목록 분석 질문 처리\n- 실행: '목록 분석'에서 질문을 입력할 때\n- 질문 종류\n  · 찾기: 조건에 맞는 영상만 보여줌\n  · 나누기: 그룹으로 정리\n  · 일반 질문: 목록을 보고 답변",
+    fixedNote: "- 자동 첨부: 입력한 질문, 출력 형식(JSON), 영상 목록",
+    defaultText: "작업: 아래 요청대로 재생목록 분석 (요청 유형별로 \"mode\" 결정)\n1. 영상 찾기\n   - \"mode\": \"search\"\n   - \"matches\": 조건에 맞는 영상 번호만\n2. 나누기·정리\n   - \"mode\": \"group\"\n   - \"groups\": 모든 영상 포함\n   - 그룹 이름: 12자 이내, 애매하면 \"기타\"\n3. 일반 질문 (예: \"이 목록 어떤 것 같아?\")\n   - \"mode\": \"answer\"\n   - \"answer\": 개조식 3~5줄 (줄마다 \"- \"로 시작, 짧은 명사형·\"~함\"으로 끝맺음)\n   - 영상 제목을 근거로 작성\n공통\n- 쓰지 않는 \"matches\"/\"groups\": 빈 배열\n- \"summary\": 결과를 한 줄로",
   },
   {
     id: "adminCommand",
     label: "일반 요청 해석",
-    usage: "- 용도: 문장으로 쓴 요청을 AI가 해석해 바로 실행\n- 실행 시점: 위 선택 상자를 '선택 안함'으로 두고 \"적용하기\"를 누를 때\n- 할 수 있는 일\n  · 화면 크기 조절(썸네일·글자·버튼)\n  · AI 기능 프롬프트에 지시문 추가\n  · 설정 되돌리기\n- \"저장하기\"는 입력한 질문만 보관하고 실행하지 않음",
-    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용: 입력한 요청 문장\n- 주의: 잘못 고치면 일반 요청이 동작하지 않을 수 있음\n- 복구: '선택 안함'에서 \"프롬프트를 원래대로 되돌려줘\"라고 요청",
-    defaultText: "관리자의 요청을 아래 동작 중 하나로 해석하세요. 돌려 말해도 핵심 의도를 찾아 가장 가까운 동작에 연결합니다.\n1. \"resize\": 화면 크기 조절\n   - \"target\": \"thumbnail\"(썸네일), \"text\"(제목 글자), \"button\"(전체 재생·목록 분석 같은 주요 버튼), \"both\"(목록 썸네일+글자, 재생목록/영상 목록 요청일 때만)\n   - 버튼 요청은 반드시 \"button\"으로 합니다.\n   - \"scaleDelta\": 변화 비율(0.2 = 20% 키움, -0.15 = 15% 줄임). 숫자 없이 크게/작게면 ±0.2\n2. \"set_prompt\": AI 기능의 동작 변경\n   - \"promptCategory\": \"tag\"(태그), \"standardTitle\"(표준제목), \"playlistInfo\"(재생목록 추천), \"playlistAnalysis\"(목록 분석)\n   - \"promptText\": 그 기능 프롬프트 끝에 붙일 한국어 지시문(관리자에게 하는 답변이 아니라 독립된 지시문)\n   - 중복 영상 판정은 영상 ID만으로 이뤄지고 프롬프트를 쓰지 않으므로, 중복 판정 관련 요청은 \"unsupported\"로 처리합니다.\n3. \"reset\": 되돌리기\n   - \"resetTarget\": \"prompts\"(프롬프트만), \"scale\"(크기만), \"all\"(둘 다, 불분명하면 이것)\n4. \"unsupported\": 위에 없는 요청\n   - 지원하는 것과 아닌 것을 \"summary\"에 짧게 설명합니다.\n공통 규칙\n- 이해한 내용을 한 문장으로 \"summary\"(한국어)에 적습니다.\n- JSON으로만 답합니다.",
+    usage: "- 용도: 문장으로 쓴 요청을 AI가 알아서 실행\n- 실행: 위 선택 상자를 '선택 안함'으로 두고 \"적용하기\" 클릭\n- 가능한 일\n  · 화면 크기 조절\n  · AI 기능에 지시 추가\n  · 설정 되돌리기\n- \"저장하기\": 질문만 보관 (실행 안 함)",
+    fixedNote: "- 자동 첨부: 입력한 요청 문장\n- 주의: 잘못 고치면 일반 요청이 동작하지 않을 수 있음\n- 복구: '선택 안함'에서 \"프롬프트를 원래대로 되돌려줘\" 입력",
+    defaultText: "작업: 관리자 요청을 아래 동작 중 하나로 해석 (돌려 말해도 핵심 의도에 가장 가까운 동작 선택)\n1. \"resize\": 화면 크기 조절\n   - \"target\": \"thumbnail\"(썸네일), \"text\"(제목 글자), \"button\"(전체 재생·목록 분석 등 주요 버튼), \"both\"(목록 썸네일+글자, 재생목록/영상 목록 요청일 때만)\n   - 버튼 요청: 반드시 \"button\"\n   - \"scaleDelta\": 변화 비율 (0.2 = 20% 키움, -0.15 = 15% 줄임, 숫자 없이 크게/작게 = ±0.2)\n2. \"set_prompt\": AI 기능의 동작 변경\n   - \"promptCategory\": \"tag\"(태그), \"standardTitle\"(표준제목), \"playlistInfo\"(재생목록 추천), \"playlistAnalysis\"(목록 분석)\n   - \"promptText\": 그 기능 프롬프트 끝에 붙일 한국어 지시문 (관리자에게 하는 답변이 아닌 독립된 지시문)\n   - 중복 영상 판정은 영상 ID만 사용하고 프롬프트를 쓰지 않음 → 관련 요청은 \"unsupported\"\n3. \"reset\": 되돌리기\n   - \"resetTarget\": \"prompts\"(프롬프트만), \"scale\"(크기만), \"all\"(둘 다, 불분명하면 이것)\n4. \"unsupported\": 위에 없는 요청\n   - 지원 여부를 \"summary\"에 짧게 설명\n공통\n- \"summary\"(한국어): 이해한 내용을 한 줄로\n- 응답: JSON만",
   },
 ];
 
@@ -2162,7 +2162,7 @@ function buildCustomAnalysisPrompt(userPrompt, videoTitles, instructionText) {
     "",
     `User's instruction: ${sanitizeAiPromptText(userPrompt)}`,
     'Respond with JSON only, matching this shape: {"mode": "search" | "group" | "answer", "summary": "...", "answer": "...", "matches": [1, 2], "groups": [{"name": "...", "videoIndexes": [1, 2]}]}.',
-    'If the instruction is a general question or comment about the playlist (neither finding specific videos nor splitting them into groups), use mode "answer": put a helpful reply in Korean (3-5 sentences, based on the video titles below) in "answer", and leave "matches" and "groups" as empty arrays.',
+    'If the instruction is a general question or comment about the playlist (neither finding specific videos nor splitting them into groups), use mode "answer": put a helpful reply in Korean in "answer", written as 3-5 short bullet lines (each line starts with "- " and is a brief noun-ending or "~함" phrase, not a full sentence; separate lines with \\n; based on the video titles below), and leave "matches" and "groups" as empty arrays.',
     "",
     "Videos in this playlist (1-based numbering):",
   ];
