@@ -1175,7 +1175,7 @@ const AI_ENGINE_DESCRIPTIONS = {
 
 // detail은 "영상 3개" 또는 "영상 3개 (실패)"처럼 끝에 괄호 설명이 붙을 수 있다.
 // 로그 한 줄은 그 자체로 읽히는 문장으로 쓰고, 항목별 설명은 info로 따로 남긴다.
-function logAiRun(featureLabel, detail, engine, custom, extra) {
+function buildAiLogTitle(featureLabel, detail, engine, custom) {
   const noteMatch = /\s*\(([^()]+)\)\s*$/.exec(detail);
   const note = noteMatch && noteMatch[1] !== "실패" ? noteMatch[1] : "";
   const target = noteMatch ? detail.slice(0, noteMatch.index) : detail;
@@ -1189,7 +1189,26 @@ function logAiRun(featureLabel, detail, engine, custom, extra) {
     "프롬프트": describePromptSource(custom) + (custom ? " (관리자 화면에서 고쳐 적용한 지시문)" : " (앱에 기본으로 들어 있는 지시문)"),
     "결과": succeeded ? "성공" : "실패" + (note ? " — " + note : ""),
   };
-  return appendAdminLog("ai", text, Object.assign({}, extra, { info: info }));
+  return { text: text, info: info };
+}
+
+function logAiRun(featureLabel, detail, engine, custom, extra) {
+  const title = buildAiLogTitle(featureLabel, detail, engine, custom);
+  return appendAdminLog("ai", title.text, Object.assign({}, extra, { info: title.info }));
+}
+
+// 예전 형식("기능 · 영상 N개 · 엔진 · 프롬프트")으로 저장된 AI 호출 기록을 새 제목 형식으로 바꾼다.
+// 알아볼 수 없는 모양이면 그대로 둔다.
+function upgradeLegacyAiLogTitle(entry) {
+  if (!entry || entry.kind !== "ai" || entry.info || typeof entry.text !== "string") {
+    return entry;
+  }
+  const parts = entry.text.split(" · ");
+  if (parts.length !== 4 || !AI_ENGINE_DESCRIPTIONS[parts[2]]) {
+    return entry;
+  }
+  const title = buildAiLogTitle(parts[0], parts[1], parts[2], parts[3].indexOf("사용자 지정") === 0);
+  return Object.assign({}, entry, { text: title.text, info: title.info });
 }
 
 // ---- 관리자 판별 ----
@@ -1352,8 +1371,15 @@ async function purgeLegacyAdminLogs() {
     try {
       const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
       const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
-      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); });
-      if (kept.length !== list.length) {
+      let upgraded = false;
+      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); }).map(function (entry) {
+        const next = upgradeLegacyAiLogTitle(entry);
+        if (next !== entry) {
+          upgraded = true;
+        }
+        return next;
+      });
+      if (kept.length !== list.length || upgraded) {
         await chrome.storage.local.set({ [ADMIN_LOG_KEY]: kept });
       }
     } catch (_error) {
