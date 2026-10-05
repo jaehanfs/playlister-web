@@ -1044,7 +1044,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 12;
+const PROMPT_DEFAULTS_VERSION = 13;
 
 const PROMPT_TYPES = [
   {
@@ -1065,8 +1065,8 @@ const PROMPT_TYPES = [
     id: "playlistInfo",
     label: "재생목록 추천",
     usage: "- 용도: 재생목록 제목·설명 추천\n- 실행: 재생목록 수정 화면의 '내용 AI 추천'을 누를 때\n- 결과: 추천 후보를 눌러 입력칸에 채움",
-    fixedNote: "- {{COUNT}}: 추천 개수로 자동 변경\n- 자동 첨부: 현재 제목·설명, 영상 제목 목록, 출력 형식(JSON)",
-    defaultText: "이 재생목록의 영상 제목을 보고, 어울리는 재생목록 제목과 설명을 한국어로 추천해 주세요.\n\n- 제목 {{COUNT}}개와 설명 {{COUNT}}개를 추천해 주세요.\n- 제목은 25자 이내로 짧게 써 주세요.\n- 설명은 1~2문장으로 써 주세요.\n- 추천마다 분위기를 다르게 써 주세요.",
+    fixedNote: "- 자동 첨부: 현재 제목·설명, 영상 제목 목록, 출력 형식(JSON)",
+    defaultText: "이 재생목록에 들어 있는 영상 제목을 보고, 재생목록에 어울리는 제목과 설명을 한국어로 추천해 주세요.\n\n- 제목 후보 5개와 설명 후보 5개를 추천해 주세요.\n- 제목은 25자 이내로 짧게 써 주세요.\n- 설명은 1~2문장으로 써 주세요.\n- 후보마다 느낌이 서로 뚜렷하게 다르도록 써 주세요.\n  · 예를 들어 차분한 느낌, 신나는 느낌, 감성적인 느낌, 재치 있는 느낌, 담백하고 깔끔한 느낌처럼 후보마다 다른 분위기로 쓰세요.\n  · 같은 단어나 비슷한 문장 구조를 반복하지 마세요.\n  · 모든 후보가 영상 제목에서 드러나는 재생목록의 실제 내용과는 맞아야 합니다.",
   },
   {
     id: "playlistAnalysis",
@@ -1077,6 +1077,7 @@ const PROMPT_TYPES = [
   },
   {
     id: "adminCommand",
+    hidden: true,
     label: "일반 요청 해석",
     usage: "- 용도: 문장으로 쓴 요청을 AI가 알아서 실행\n- 실행: 위 선택 상자를 '선택 안함'으로 두고 \"적용하기\" 클릭\n- 가능한 일\n  · 화면 크기 조절\n  · AI 기능에 지시 추가\n  · 설정 되돌리기\n- \"저장하기\": 질문만 보관 (실행 안 함)",
     fixedNote: "- 자동 첨부: 입력한 요청 문장\n- 주의: 잘못 고치면 일반 요청이 동작하지 않을 수 있음\n- 복구: '선택 안함'에서 \"프롬프트를 원래대로 되돌려줘\" 입력",
@@ -1084,6 +1085,9 @@ const PROMPT_TYPES = [
   },
 ];
 
+// 관리자 화면에서 보고 고칠 수 있는 유형(hidden 표시가 없는 것). "선택 안함" 일반 요청이 쓰는
+// 해석용 지시문(adminCommand)은 화면에서 지우고 코드의 기본 문구로만 쓴다.
+const EDITABLE_PROMPT_TYPES = PROMPT_TYPES.filter((info) => !info.hidden);
 const PROMPT_TYPE_MAP = Object.fromEntries(PROMPT_TYPES.map((info) => [info.id, info]));
 // 일반 요청(AI)이 "지시문 추가"로 손댈 수 있는 유형 — 요청 해석기 자신은 제외한다.
 const AI_SETTABLE_PROMPT_TYPES = PROMPT_TYPES.map((info) => info.id).filter((id) => id !== "adminCommand");
@@ -1139,10 +1143,22 @@ function requirePromptType(type) {
   return info;
 }
 
+// 관리자 화면에서 저장·적용·되돌리기를 할 수 있는 유형만 통과시킨다.
+function requireEditablePromptType(type) {
+  const info = requirePromptType(type);
+  if (info.hidden) {
+    throw new Error("관리자 화면에서 고칠 수 없는 프롬프트입니다.");
+  }
+  return info;
+}
+
 // 실제 AI 호출에 쓸 프롬프트 지시문을 돌려준다. custom은 관리자가 적용한
 // 값이 쓰이고 있는지(로그에 "사용자 지정/기본"으로 남기기 위함).
 async function resolvePrompt(type) {
   const info = requirePromptType(type);
+  if (info.hidden) {
+    return { text: info.defaultText, custom: false };
+  }
   const store = await readPromptStore();
   const applied = promptStoreEntry(store, type).applied;
   const custom = applied !== null && applied.trim() !== "";
@@ -1430,7 +1446,7 @@ async function getPromptStoreForAdmin() {
   const store = await readPromptStore();
   return {
     defaultsVersion: PROMPT_DEFAULTS_VERSION,
-    types: PROMPT_TYPES.map((info) => {
+    types: EDITABLE_PROMPT_TYPES.map((info) => {
       const entry = promptStoreEntry(store, info.id);
       return {
         id: info.id,
@@ -1455,7 +1471,7 @@ function requireNonEmptyPromptText(text) {
 
 async function savePromptDraft(type, text) {
   const identity = await requireAdmin();
-  const info = requirePromptType(type);
+  const info = requireEditablePromptType(type);
   const normalized = requireNonEmptyPromptText(text);
   const store = await readPromptStore();
   const entry = promptStoreEntry(store, type);
@@ -1467,7 +1483,7 @@ async function savePromptDraft(type, text) {
 
 async function applyPrompt(type, text) {
   const identity = await requireAdmin();
-  const info = requirePromptType(type);
+  const info = requireEditablePromptType(type);
   const normalized = requireNonEmptyPromptText(text);
   const store = await readPromptStore();
   // 기본값과 똑같으면 "사용자 지정"으로 남기지 않는다 — 나중에 기본 프롬프트가
@@ -1481,7 +1497,7 @@ async function applyPrompt(type, text) {
 
 async function resetPrompt(type) {
   const identity = await requireAdmin();
-  const info = requirePromptType(type);
+  const info = requireEditablePromptType(type);
   const store = await readPromptStore();
   delete store[type];
   await writePromptStore(store);
@@ -1669,7 +1685,7 @@ async function getDataOverview() {
     admins: await getAdminEmails(),
     logEnabled: logSettings.enabled,
     logCount: logList.length,
-    prompts: PROMPT_TYPES.map((info) => {
+    prompts: EDITABLE_PROMPT_TYPES.map((info) => {
       const entry = promptStoreEntry(promptStore, info.id);
       return {
         id: info.id,
@@ -1720,7 +1736,7 @@ async function exportAdminData() {
   const identity = await requireAdmin();
   const store = await readPromptStore();
   const prompts = {};
-  PROMPT_TYPES.forEach((info) => {
+  EDITABLE_PROMPT_TYPES.forEach((info) => {
     const applied = promptStoreEntry(store, info.id).applied;
     if (applied !== null) {
       prompts[info.id] = applied;
@@ -1763,7 +1779,7 @@ async function importAdminData(data) {
 
   if (data.prompts && typeof data.prompts === "object") {
     const store = await readPromptStore();
-    PROMPT_TYPES.forEach((info) => {
+    EDITABLE_PROMPT_TYPES.forEach((info) => {
       if (typeof data.prompts[info.id] !== "string") {
         return;
       }
