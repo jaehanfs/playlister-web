@@ -7,8 +7,8 @@
     <script src="./config.local.js"></script>
     <script src="./chrome-shim.js"></script>
     <script src="./background.js"></script>
-    <script type="module" crossorigin src="./assets/index-DVIX9RiQ.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-o_XrXR13.css">
+    <script type="module" crossorigin src="./assets/index-Fq36KV5o.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-f1iZXn93.css">
   </head>
   <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-20">
 
@@ -820,17 +820,12 @@
               <button type="button" id="admin-log-clear-btn" class="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg cursor-pointer transition-colors">로그 지우기</button>
             </div>
           </div>
-          <fieldset class="border border-slate-200 rounded-xl px-3 py-2.5">
-            <legend class="px-1 text-[11px] font-semibold text-slate-600">기록할 로그 종류</legend>
-            <div id="admin-log-kind-checks" class="flex flex-wrap gap-x-4 gap-y-1.5">
-              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="AI 호출 기록 (입력값·출력값·프롬프트 명령 포함)"><input type="checkbox" class="admin-log-kind-check" data-kind="ai" checked /> AI 호출</label>
-              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="프롬프트 저장·적용·되돌리기 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="prompt" checked /> 프롬프트</label>
-              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="관리자 지정·해제·수정, 일반 요청 실행 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="admin" checked /> 관리자</label>
-              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="관리자 설정 내보내기·가져오기 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="data" checked /> 데이터</label>
-              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="오류 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="error" checked /> 오류</label>
-            </div>
-            <p class="mt-1.5 text-[10px] text-slate-400 leading-relaxed">체크를 해제한 종류는 목록에서 숨기고, <b>그 뒤로는 기록도 하지 않습니다.</b> (이미 쌓인 기록은 지워지지 않고, 다시 체크하면 목록에 다시 나타납니다.)</p>
-          </fieldset>
+          <label class="flex items-start gap-2 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer">
+            <input type="checkbox" id="admin-log-enabled-check" class="mt-0.5" checked />
+            <span class="text-xs text-slate-700"><b>로그 기록하기</b>
+              <span class="block mt-0.5 text-[10px] text-slate-400 leading-relaxed">체크하면 기록하고, 해제하면 앞으로 기록하지 않습니다. 이미 쌓인 기록은 그대로 보입니다.</span>
+            </span>
+          </label>
           <p class="text-[11px] text-slate-400 leading-relaxed">AI 호출 줄을 <b>클릭</b>하면 그때 AI에게 준 <b>프롬프트 명령</b>과 입력값·출력값을 볼 수 있습니다(프롬프트 3,000자, 입력·출력 각 1,200자까지). 최근 300건만 보관합니다.</p>
           <ul id="admin-log-list" class="space-y-1.5 max-h-[55vh] overflow-y-auto"></ul>
           <p id="admin-log-empty" class="hidden text-center text-xs text-slate-400 py-6">기록이 없습니다.</p>

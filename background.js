@@ -178,7 +178,7 @@ chrome.runtime.onMessage.addListener(function (message, _sender, sendResponse) {
       return getAdminLogSettings();
     },
     "ytpl:setAdminLogSettings": function () {
-      return setAdminLogSettings(message.kinds);
+      return setAdminLogSettings(message.enabled);
     },
     "ytpl:exportAdminData": function () {
       return exportAdminData();
@@ -1024,10 +1024,8 @@ const AI_LOG_FIELD_MAX_LENGTH = 1200;
 // 어떤 프롬프트 명령으로 AI를 돌렸는지는 로그를 보는 핵심 이유라, 지시문 전체가
 // 보이도록 입력/출력보다 넉넉하게 잡는다(프롬프트 자체 상한 6000자의 절반).
 const AI_LOG_PROMPT_MAX_LENGTH = 3000;
-// 관리자가 로그 종류별로 "기록할지/보여줄지"를 고르는 설정(체크박스). 값이
-// 없으면 전부 켜짐. main.js의 ADMIN_LOG_KIND_STYLES 키와 같은 목록이어야 한다.
+// 관리자 로그를 기록할지 말지를 정하는 설정(체크박스 하나). 값이 없으면 기록함.
 const ADMIN_LOG_SETTINGS_KEY = "ytplAdminLogSettingsV1";
-const ADMIN_LOG_KINDS = ["ai", "prompt", "admin", "data", "error"];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
@@ -1248,23 +1246,19 @@ function truncateForLog(value, maxLength) {
   return text.length > limit ? `${text.slice(0, limit)}…` : text;
 }
 
-// 저장된 설정을 { 종류: true/false } 형태로 돌려준다. 없거나 깨진 값은 켜짐으로 본다.
+// 저장된 설정을 { enabled: true/false }로 돌려준다. 없거나 깨진 값은 "기록함"이다.
 async function readAdminLogSettings() {
   const stored = await chrome.storage.local.get(ADMIN_LOG_SETTINGS_KEY);
   const raw = stored[ADMIN_LOG_SETTINGS_KEY];
-  const kinds = {};
-  ADMIN_LOG_KINDS.forEach((kind) => {
-    kinds[kind] = !(raw && raw.kinds && raw.kinds[kind] === false);
-  });
-  return { kinds: kinds };
+  return { enabled: !(raw && raw.enabled === false) };
 }
 
 function appendAdminLog(kind, text, extra) {
   adminLogQueue = adminLogQueue.then(async function () {
     try {
-      // 체크 해제된 종류는 기록 자체를 하지 않는다.
+      // 기록이 꺼져 있으면(체크 해제) 아무것도 남기지 않는다.
       const settings = await readAdminLogSettings();
-      if (settings.kinds[kind] === false) {
+      if (!settings.enabled) {
         return;
       }
       const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
@@ -1300,19 +1294,17 @@ async function getAdminLogSettings() {
   return readAdminLogSettings();
 }
 
-// kinds: { ai: true, prompt: false, ... } — 알려진 종류만 반영한다.
-async function setAdminLogSettings(kinds) {
+async function setAdminLogSettings(enabled) {
   const identity = await requireAdmin();
-  const current = await readAdminLogSettings();
-  const next = { kinds: Object.assign({}, current.kinds) };
-  ADMIN_LOG_KINDS.forEach((kind) => {
-    if (kinds && typeof kinds[kind] === "boolean") {
-      next.kinds[kind] = kinds[kind];
-    }
-  });
+  const next = { enabled: Boolean(enabled) };
+  // 끌 때는 "껐다"는 기록이 마지막으로 남도록 저장 전에, 켤 때는 저장 후에 남긴다.
+  if (!next.enabled) {
+    await appendAdminLog("admin", `로그 기록을 껐습니다. (${identity.email})`);
+  }
   await chrome.storage.local.set({ [ADMIN_LOG_SETTINGS_KEY]: next });
-  const off = ADMIN_LOG_KINDS.filter((kind) => next.kinds[kind] === false);
-  await appendAdminLog("admin", `로그 기록 설정 변경 — 끔: ${off.length ? off.join(", ") : "없음"} (${identity.email})`);
+  if (next.enabled) {
+    await appendAdminLog("admin", `로그 기록을 켰습니다. (${identity.email})`);
+  }
   return next;
 }
 
