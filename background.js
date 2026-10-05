@@ -1044,7 +1044,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 11;
+const PROMPT_DEFAULTS_VERSION = 12;
 
 const PROMPT_TYPES = [
   {
@@ -1072,8 +1072,8 @@ const PROMPT_TYPES = [
     id: "playlistAnalysis",
     label: "목록 분석",
     usage: "- 용도: 재생목록 분석 질문 처리\n- 실행: '목록 분석'에서 질문을 입력할 때\n- 질문 종류\n  · 찾기: 조건에 맞는 영상만 보여줌\n  · 나누기: 그룹으로 정리\n  · 일반 질문: 목록을 보고 답변",
-    fixedNote: "- 자동 첨부: 입력한 질문, 출력 형식(JSON), 영상 목록",
-    defaultText: "아래 요청대로 재생목록을 살펴봐 주세요. 요청 종류에 따라 mode 값이 달라집니다.\n\n- 영상을 찾아 달라는 요청이면 mode는 \"search\"로 하고, 조건에 맞는 영상 번호만 matches에 적어 주세요.\n- 나누거나 정리해 달라는 요청이면 mode는 \"group\"으로 하고, 모든 영상을 groups에 나눠 담아 주세요. 그룹 이름은 12자 이내로 짓고, 애매한 영상은 \"기타\"로 묶어 주세요.\n- 목록에 대한 일반 질문(예: \"이 목록 어떤 것 같아?\")이면 mode는 \"answer\"로 하고, 영상 제목을 근거로 answer에 답해 주세요. 답은 \"- \"로 시작하는 짧은 3~5줄로 써 주세요.\n- 쓰지 않는 matches나 groups는 빈 칸([])으로 두고, 결과 요약은 summary에 한 줄로 적어 주세요.",
+    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용: 입력한 질문, 영상 목록, 결과를 받는 형식(JSON)",
+    defaultText: "요청 종류에 맞게 재생목록을 살펴봐 주세요.\n\n- 영상을 찾아 달라는 요청: 조건에 맞는 영상만 골라 주세요.\n- 나누거나 정리해 달라는 요청: 모든 영상을 비슷한 것끼리 묶고, 그룹 이름은 12자 이내로 지어 주세요. 애매한 영상은 \"기타\"에 넣어 주세요.\n- 목록에 대한 일반 질문: 영상 제목을 근거로 짧게 3~5줄로 답해 주세요. 각 줄은 \"- \"로 시작해 주세요.\n- 결과는 한 줄로 요약해 주세요.",
   },
   {
     id: "adminCommand",
@@ -2223,6 +2223,7 @@ function buildCustomAnalysisPrompt(userPrompt, videoTitles, instructionText) {
     "",
     `User's instruction: ${sanitizeAiPromptText(userPrompt)}`,
     'Respond with JSON only, matching this shape: {"mode": "search" | "group" | "answer", "summary": "...", "answer": "...", "matches": [1, 2], "groups": [{"name": "...", "videoIndexes": [1, 2]}]}.',
+    'Use mode "search" when the instruction asks to find videos (put only the matching video numbers in "matches"), mode "group" when it asks to split or organize them (put every video into "groups"), and leave the arrays you do not use empty. Put a one-line result summary in "summary".',
     'If the instruction is a general question or comment about the playlist (neither finding specific videos nor splitting them into groups), use mode "answer": put a helpful reply in Korean in "answer", written as 3-5 short bullet lines (each line starts with "- " and is a brief noun-ending or "~함" phrase, not a full sentence; separate lines with \\n; based on the video titles below), and leave "matches" and "groups" as empty arrays.',
     "",
     "Videos in this playlist (1-based numbering):",
