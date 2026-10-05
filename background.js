@@ -1161,8 +1161,35 @@ const AI_ENGINE_NONE = "AI 사용 불가/실패";
 // 어떤 프롬프트로 돌았는지"). extra로 입력값/출력값/실제 프롬프트 내용을
 // 함께 남길 수 있다 — 관리자가 직접 요청한 것이라, 영상 제목처럼 실제
 // 콘텐츠가 로그에 그대로 들어간다(예전엔 의도적으로 남기지 않았다).
+const AI_FEATURE_DESCRIPTIONS = {
+  "표준제목": "영상 제목을 '제목 + 부가 내용'으로 깔끔하게 정리",
+  "태그 분류": "영상마다 장르·분위기 같은 태그를 붙임",
+  "재생목록 추천": "재생목록의 제목·설명 후보를 추천",
+  "목록 분석": "재생목록에서 영상을 찾거나, 그룹으로 나누거나, 질문에 답함",
+};
+const AI_ENGINE_DESCRIPTIONS = {
+  [AI_ENGINE_CLOUD]: "Gemini 클라우드 AI (등록한 API 키로 인터넷을 통해 호출)",
+  [AI_ENGINE_NANO]: "기기 내장 AI(Nano) (클라우드를 못 써서 이 기기 안에서 처리)",
+  [AI_ENGINE_NONE]: "AI를 쓰지 못함 (클라우드·기기 내장 모두 결과를 못 만듦)",
+};
+
+// detail은 "영상 3개" 또는 "영상 3개 (실패)"처럼 끝에 괄호 설명이 붙을 수 있다.
+// 로그 한 줄은 그 자체로 읽히는 문장으로 쓰고, 항목별 설명은 info로 따로 남긴다.
 function logAiRun(featureLabel, detail, engine, custom, extra) {
-  return appendAdminLog("ai", `${featureLabel} · ${detail} · ${engine} · ${describePromptSource(custom)}`, extra);
+  const noteMatch = /\s*\(([^()]+)\)\s*$/.exec(detail);
+  const note = noteMatch && noteMatch[1] !== "실패" ? noteMatch[1] : "";
+  const target = noteMatch ? detail.slice(0, noteMatch.index) : detail;
+  const succeeded = engine !== AI_ENGINE_NONE;
+  const aiShort = engine === AI_ENGINE_CLOUD ? "Gemini 클라우드 AI" : engine === AI_ENGINE_NANO ? "기기 내장 AI(Nano)" : "AI 사용 못 함";
+  const text = `${featureLabel} ${succeeded ? "성공" : "실패"} — ${target} 처리 · ${aiShort} · ${describePromptSource(custom)}${note ? " · " + note : ""}`;
+  const info = {
+    "기능": featureLabel + (AI_FEATURE_DESCRIPTIONS[featureLabel] ? " — " + AI_FEATURE_DESCRIPTIONS[featureLabel] : ""),
+    "처리 대상": target,
+    "사용한 AI": AI_ENGINE_DESCRIPTIONS[engine] || engine,
+    "프롬프트": describePromptSource(custom) + (custom ? " (관리자 화면에서 고쳐 적용한 지시문)" : " (앱에 기본으로 들어 있는 지시문)"),
+    "결과": succeeded ? "성공" : "실패" + (note ? " — " + note : ""),
+  };
+  return appendAdminLog("ai", text, Object.assign({}, extra, { info: info }));
 }
 
 // ---- 관리자 판별 ----
@@ -1272,6 +1299,13 @@ function appendAdminLog(kind, text, extra) {
       if (extra && typeof extra === "object") {
         // instruction: 지시문 / provided: AI에게 제공한 정보 / result: AI의 결과 /
         // prompt: 코드가 만들어 AI에게 실제로 보낸 최종 프롬프트 전문
+        if (extra.info && typeof extra.info === "object") {
+          const info = {};
+          Object.keys(extra.info).forEach(function (key) {
+            info[key] = String(extra.info[key]).slice(0, 300);
+          });
+          entry.info = info;
+        }
         ["instruction", "provided", "result", "prompt"].forEach(function (field) {
           const text = formatLogField(extra[field]);
           if (text) entry[field] = text;
