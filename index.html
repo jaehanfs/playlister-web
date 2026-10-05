@@ -4,11 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>플레이리스터</title>
-    <script src="./config.local.js"></script>
-    <script src="./chrome-shim.js"></script>
-    <script src="./background.js"></script>
-    <script type="module" crossorigin src="./assets/index-Bztx_TFS.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CnuVlI0I.css">
+    <script type="module" crossorigin src="/assets/index-DVIX9RiQ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-o_XrXR13.css">
   </head>
   <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-20">
 
@@ -816,19 +813,22 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-base font-bold text-slate-900">로그</h2>
             <div class="flex items-center gap-2">
-              <select id="admin-log-filter" class="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-800 focus:outline-none focus:border-slate-400 cursor-pointer" title="종류별로 보기">
-                <option value="">전체</option>
-                <option value="ai">AI 호출</option>
-                <option value="prompt">프롬프트</option>
-                <option value="admin">관리자</option>
-                <option value="data">데이터</option>
-                <option value="error">오류</option>
-              </select>
               <button type="button" id="admin-log-refresh-btn" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors">새로고침</button>
               <button type="button" id="admin-log-clear-btn" class="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg cursor-pointer transition-colors">로그 지우기</button>
             </div>
           </div>
-          <p class="text-[11px] text-slate-400 leading-relaxed">AI가 언제·어떤 기능에서·어떤 방식(Gemini/Nano)과 프롬프트(기본/사용자 지정)로 동작했는지, 그리고 관리자가 프롬프트를 바꾸거나 사용자를 지정한 기록입니다. AI 호출은 "입력값·출력값·프롬프트 보기"를 누르면 실제 영상 제목 등 입력값과 AI 응답, 사용한 프롬프트 내용까지 볼 수 있습니다(각 필드 1,200자까지). 최근 300건만 보관합니다.</p>
+          <fieldset class="border border-slate-200 rounded-xl px-3 py-2.5">
+            <legend class="px-1 text-[11px] font-semibold text-slate-600">기록할 로그 종류</legend>
+            <div id="admin-log-kind-checks" class="flex flex-wrap gap-x-4 gap-y-1.5">
+              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="AI 호출 기록 (입력값·출력값·프롬프트 명령 포함)"><input type="checkbox" class="admin-log-kind-check" data-kind="ai" checked /> AI 호출</label>
+              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="프롬프트 저장·적용·되돌리기 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="prompt" checked /> 프롬프트</label>
+              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="관리자 지정·해제·수정, 일반 요청 실행 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="admin" checked /> 관리자</label>
+              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="관리자 설정 내보내기·가져오기 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="data" checked /> 데이터</label>
+              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer" title="오류 기록"><input type="checkbox" class="admin-log-kind-check" data-kind="error" checked /> 오류</label>
+            </div>
+            <p class="mt-1.5 text-[10px] text-slate-400 leading-relaxed">체크를 해제한 종류는 목록에서 숨기고, <b>그 뒤로는 기록도 하지 않습니다.</b> (이미 쌓인 기록은 지워지지 않고, 다시 체크하면 목록에 다시 나타납니다.)</p>
+          </fieldset>
+          <p class="text-[11px] text-slate-400 leading-relaxed">AI 호출 줄을 <b>클릭</b>하면 그때 AI에게 준 <b>프롬프트 명령</b>과 입력값·출력값을 볼 수 있습니다(프롬프트 3,000자, 입력·출력 각 1,200자까지). 최근 300건만 보관합니다.</p>
           <ul id="admin-log-list" class="space-y-1.5 max-h-[55vh] overflow-y-auto"></ul>
           <p id="admin-log-empty" class="hidden text-center text-xs text-slate-400 py-6">기록이 없습니다.</p>
         </div>

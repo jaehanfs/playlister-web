@@ -174,6 +174,12 @@ chrome.runtime.onMessage.addListener(function (message, _sender, sendResponse) {
     "ytpl:clearAdminLogs": function () {
       return clearAdminLogs();
     },
+    "ytpl:getAdminLogSettings": function () {
+      return getAdminLogSettings();
+    },
+    "ytpl:setAdminLogSettings": function () {
+      return setAdminLogSettings(message.kinds);
+    },
     "ytpl:exportAdminData": function () {
       return exportAdminData();
     },
@@ -1015,11 +1021,18 @@ const ADMIN_LOG_MAX_ENTRIES = 300;
 // 실제 콘텐츠가 그대로 로그에 들어가므로(관리자 화면에서 직접 요청한 것),
 // 저장소가 한없이 커지지 않도록 필드마다 잘라낸다.
 const AI_LOG_FIELD_MAX_LENGTH = 1200;
+// 어떤 프롬프트 명령으로 AI를 돌렸는지는 로그를 보는 핵심 이유라, 지시문 전체가
+// 보이도록 입력/출력보다 넉넉하게 잡는다(프롬프트 자체 상한 6000자의 절반).
+const AI_LOG_PROMPT_MAX_LENGTH = 3000;
+// 관리자가 로그 종류별로 "기록할지/보여줄지"를 고르는 설정(체크박스). 값이
+// 없으면 전부 켜짐. main.js의 ADMIN_LOG_KIND_STYLES 키와 같은 목록이어야 한다.
+const ADMIN_LOG_SETTINGS_KEY = "ytplAdminLogSettingsV1";
+const ADMIN_LOG_KINDS = ["ai", "prompt", "admin", "data", "error"];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 4;
+const PROMPT_DEFAULTS_VERSION = 5;
 
 const PROMPT_TYPES = [
   {
@@ -1220,7 +1233,8 @@ let adminLogQueue = Promise.resolve();
 // extra.input/output/prompt는 문자열 또는 JSON.stringify 가능한 값을 받아
 // AI_LOG_FIELD_MAX_LENGTH로 잘라 저장한다. 값이 없으면 그 필드는 아예
 // 안 붙인다(오래된 로그와 섞여도 화면에서 구분하기 쉽도록).
-function truncateForLog(value) {
+function truncateForLog(value, maxLength) {
+  const limit = maxLength || AI_LOG_FIELD_MAX_LENGTH;
   if (value === undefined || value === null || value === "") {
     return "";
   }
@@ -1231,19 +1245,35 @@ function truncateForLog(value) {
       return String(value);
     }
   })();
-  return text.length > AI_LOG_FIELD_MAX_LENGTH ? `${text.slice(0, AI_LOG_FIELD_MAX_LENGTH)}…` : text;
+  return text.length > limit ? `${text.slice(0, limit)}…` : text;
+}
+
+// 저장된 설정을 { 종류: true/false } 형태로 돌려준다. 없거나 깨진 값은 켜짐으로 본다.
+async function readAdminLogSettings() {
+  const stored = await chrome.storage.local.get(ADMIN_LOG_SETTINGS_KEY);
+  const raw = stored[ADMIN_LOG_SETTINGS_KEY];
+  const kinds = {};
+  ADMIN_LOG_KINDS.forEach((kind) => {
+    kinds[kind] = !(raw && raw.kinds && raw.kinds[kind] === false);
+  });
+  return { kinds: kinds };
 }
 
 function appendAdminLog(kind, text, extra) {
   adminLogQueue = adminLogQueue.then(async function () {
     try {
+      // 체크 해제된 종류는 기록 자체를 하지 않는다.
+      const settings = await readAdminLogSettings();
+      if (settings.kinds[kind] === false) {
+        return;
+      }
       const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
       const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
       const entry = { ts: Date.now(), kind: kind, text: String(text).slice(0, 300) };
       if (extra && typeof extra === "object") {
         const input = truncateForLog(extra.input);
         const output = truncateForLog(extra.output);
-        const prompt = truncateForLog(extra.prompt);
+        const prompt = truncateForLog(extra.prompt, AI_LOG_PROMPT_MAX_LENGTH);
         if (input) entry.input = input;
         if (output) entry.output = output;
         if (prompt) entry.prompt = prompt;
@@ -1262,7 +1292,28 @@ async function getAdminLogs() {
   await adminLogQueue;
   const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
   const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
-  return { logs: list.slice().reverse() };
+  return { logs: list.slice().reverse(), settings: await readAdminLogSettings() };
+}
+
+async function getAdminLogSettings() {
+  await requireAdmin();
+  return readAdminLogSettings();
+}
+
+// kinds: { ai: true, prompt: false, ... } — 알려진 종류만 반영한다.
+async function setAdminLogSettings(kinds) {
+  const identity = await requireAdmin();
+  const current = await readAdminLogSettings();
+  const next = { kinds: Object.assign({}, current.kinds) };
+  ADMIN_LOG_KINDS.forEach((kind) => {
+    if (kinds && typeof kinds[kind] === "boolean") {
+      next.kinds[kind] = kinds[kind];
+    }
+  });
+  await chrome.storage.local.set({ [ADMIN_LOG_SETTINGS_KEY]: next });
+  const off = ADMIN_LOG_KINDS.filter((kind) => next.kinds[kind] === false);
+  await appendAdminLog("admin", `로그 기록 설정 변경 — 끔: ${off.length ? off.join(", ") : "없음"} (${identity.email})`);
+  return next;
 }
 
 async function clearAdminLogs() {
@@ -1310,7 +1361,7 @@ async function savePromptDraft(type, text) {
   const entry = promptStoreEntry(store, type);
   store[type] = { draft: normalized, applied: entry.applied };
   await writePromptStore(store);
-  appendAdminLog("prompt", `[${info.label}] 프롬프트 초안 저장 (${identity.email})`);
+  appendAdminLog("prompt", `[${info.label}] 프롬프트 초안 저장 (${identity.email})`, { prompt: normalized });
   return { type: type, draft: normalized, applied: entry.applied };
 }
 
@@ -1324,7 +1375,7 @@ async function applyPrompt(type, text) {
   const applied = normalized === info.defaultText ? null : normalized;
   store[type] = { draft: null, applied: applied };
   await writePromptStore(store);
-  appendAdminLog("prompt", `[${info.label}] 프롬프트 적용 → ${applied === null ? "기본값과 동일" : "사용자 지정"} (${identity.email})`);
+  appendAdminLog("prompt", `[${info.label}] 프롬프트 적용 → ${applied === null ? "기본값과 동일" : "사용자 지정"} (${identity.email})`, { prompt: normalized });
   return { type: type, draft: null, applied: applied };
 }
 
@@ -2556,6 +2607,7 @@ async function performFullLogout() {
 // 있던 버그의 원인이 이 목록을 빼놓지 않고 전부 지우던 것이었다.
 // LIST_SCALE_STORAGE_KEY 값은 main.js의 동일 이름 상수와 반드시 같아야 한다.
 const STORAGE_KEYS_PRESERVED_ON_LOGOUT = [
+  ADMIN_LOG_SETTINGS_KEY,
   PROMPT_STORE_KEY,
   ADMINS_KEY,
   EXTRA_ADMINS_KEY,
