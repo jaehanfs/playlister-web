@@ -1257,87 +1257,6 @@ async function readAdminLogSettings() {
   return { enabled: !(raw && raw.enabled === false) };
 }
 
-// 로그의 "지시"는 항상 JSON으로 남긴다. 개조식 지시문(줄마다 "- ", "1. " 같은 머리표와 들여쓰기)을
-// 줄 구조에 맞춰 중첩 JSON으로 바꾼다. 머리표 없는 줄 뒤에 같은 들여쓰기로 이어지는 머리표 줄은 그 줄의
-// 하위 항목이다. "이름: 내용" 꼴은 이름을 키로, 나머지는 값으로 쓴다. 구조가 없는 글은 줄 배열이 된다.
-function promptTextToJson(text) {
-  const items = String(text)
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .filter(function (line) { return line.trim() !== ""; })
-    .map(function (line) {
-      const indent = line.length - line.trimStart().length;
-      const body = line.trim();
-      const markerMatch = /^(?:[-·•*]|\d+[.)])\s+/.exec(body);
-      return { indent: indent, marked: Boolean(markerMatch), text: (markerMatch ? body.slice(markerMatch[0].length) : body).trim(), children: [] };
-    });
-  const root = { children: [] };
-  const stack = [];
-  items.forEach(function (item) {
-    while (stack.length > 0) {
-      const top = stack[stack.length - 1];
-      const isChild = top.indent < item.indent || (top.indent === item.indent && !top.marked && item.marked);
-      if (isChild) {
-        break;
-      }
-      stack.pop();
-    }
-    (stack.length > 0 ? stack[stack.length - 1] : root).children.push(item);
-    stack.push(item);
-  });
-
-  const unquote = function (value) { return value.replace(/^"([^"]*)"$/, "$1"); };
-  const splitKeyValue = function (text) {
-    const match = /^(.{1,24}?):\s+(.+)$/.exec(text);
-    return match && !match[1].includes(", ") ? [unquote(match[1].trim()), match[2].trim()] : null;
-  };
-  const convert = function (siblings) {
-    const object = {};
-    const notes = [];
-    siblings.forEach(function (node) {
-      let key = null;
-      let value = null;
-      if (node.children.length > 0) {
-        const kv = splitKeyValue(node.text);
-        const inner = convert(node.children);
-        key = kv ? kv[0] : unquote(node.text.replace(/:$/, ""));
-        if (kv) {
-          value = Array.isArray(inner) ? { "내용": kv[1], "항목": inner } : Object.assign({ "내용": kv[1] }, inner);
-        } else {
-          value = inner;
-        }
-      } else {
-        const kv = splitKeyValue(node.text);
-        if (kv) {
-          key = kv[0];
-          value = kv[1];
-        }
-      }
-      if (key !== null && !(key in object)) {
-        object[key] = value;
-      } else {
-        notes.push(node.children.length > 0 ? { [node.text]: convert(node.children) } : node.text);
-      }
-    });
-    if (Object.keys(object).length === 0) {
-      return notes;
-    }
-    if (notes.length > 0) {
-      object["참고"] = notes;
-    }
-    return object;
-  };
-  return convert(root.children);
-}
-
-function isJsonText(text) {
-  try {
-    JSON.parse(text);
-    return true;
-  } catch (_error) {
-    return false;
-  }
-}
 
 function appendAdminLog(kind, text, extra) {
   adminLogQueue = adminLogQueue.then(async function () {
@@ -1354,8 +1273,7 @@ function appendAdminLog(kind, text, extra) {
         // instruction: 지시문 / provided: AI에게 제공한 정보 / result: AI의 결과 /
         // prompt: 코드가 만들어 AI에게 실제로 보낸 최종 프롬프트 전문
         ["instruction", "provided", "result", "prompt"].forEach(function (field) {
-          const raw = field === "instruction" && typeof extra[field] === "string" ? promptTextToJson(extra[field]) : extra[field];
-          const text = formatLogField(raw);
+          const text = formatLogField(extra[field]);
           if (text) entry[field] = text;
         });
       }
@@ -1400,15 +1318,8 @@ async function purgeLegacyAdminLogs() {
     try {
       const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
       const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
-      let migrated = false;
-      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); }).map(function (entry) {
-        if (typeof entry.instruction === "string" && entry.instruction && !isJsonText(entry.instruction)) {
-          migrated = true;
-          return Object.assign({}, entry, { instruction: formatLogField(promptTextToJson(entry.instruction)) });
-        }
-        return entry;
-      });
-      if (kept.length !== list.length || migrated) {
+      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); });
+      if (kept.length !== list.length) {
         await chrome.storage.local.set({ [ADMIN_LOG_KEY]: kept });
       }
     } catch (_error) {
