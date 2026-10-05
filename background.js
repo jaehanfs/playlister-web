@@ -718,7 +718,15 @@ async function recommendPlaylistInfoWithNano(
 async function recommendPlaylistInfo(playlistTitle, playlistDesc, videoTitles) {
   const { text: instructionText, custom } = await resolvePrompt("playlistInfo");
   const detail = `영상 제목 ${Array.isArray(videoTitles) ? videoTitles.length : 0}개 기준`;
-  const inputSummary = `제목: ${playlistTitle || "(없음)"} / 설명: ${playlistDesc || "(없음)"} / 영상: ${(Array.isArray(videoTitles) ? videoTitles : []).join(", ")}`;
+  const logBase = {
+    instruction: instructionText,
+    provided: {
+      "재생목록 제목": playlistTitle || "",
+      "재생목록 설명": playlistDesc || "",
+      "영상 제목": Array.isArray(videoTitles) ? videoTitles : [],
+    },
+    prompt: buildPlaylistInfoPrompt(playlistTitle, playlistDesc, videoTitles, instructionText),
+  };
 
   const apiKey = await getUserGeminiApiKey();
   if (apiKey) {
@@ -730,7 +738,7 @@ async function recommendPlaylistInfo(playlistTitle, playlistDesc, videoTitles) {
       instructionText,
     );
     if (cloudResult) {
-      logAiRun("재생목록 추천", detail, AI_ENGINE_CLOUD, custom, { input: inputSummary, output: cloudResult, prompt: instructionText });
+      logAiRun("재생목록 추천", detail, AI_ENGINE_CLOUD, custom, { ...logBase, result: cloudResult });
       return cloudResult;
     }
   }
@@ -745,12 +753,12 @@ async function recommendPlaylistInfo(playlistTitle, playlistDesc, videoTitles) {
       instructionText,
     );
     if (nanoResult) {
-      logAiRun("재생목록 추천", detail, AI_ENGINE_NANO, custom, { input: inputSummary, output: nanoResult, prompt: instructionText });
+      logAiRun("재생목록 추천", detail, AI_ENGINE_NANO, custom, { ...logBase, result: nanoResult });
       return nanoResult;
     }
   }
 
-  logAiRun("재생목록 추천", `${detail} (실패)`, AI_ENGINE_NONE, custom, { input: inputSummary, prompt: instructionText });
+  logAiRun("재생목록 추천", `${detail} (실패)`, AI_ENGINE_NONE, custom, { ...logBase, result: AI_LOG_NO_RESULT });
   throw new Error(
     "AI를 사용할 수 없습니다. 설정 탭에서 Gemini API Key를 등록하거나, Chrome의 내장 AI(Gemini Nano) 지원 여부를 확인해주세요.",
   );
@@ -951,13 +959,17 @@ async function classifyVideoTags(videos) {
 
   const { text: instructionText, custom } = await resolvePrompt("tag");
   const detail = `영상 ${list.length}개`;
-  const inputSummary = list.map((v) => `${v.title}${v.channel ? ` (${v.channel})` : ""}`).join(" | ");
+  const logBase = {
+    instruction: instructionText,
+    provided: { "영상 목록": list.map((v) => ({ id: v.id, title: v.title, channel: v.channel || "" })) },
+    prompt: buildVideoTagsPrompt(list, instructionText),
+  };
 
   const apiKey = await getUserGeminiApiKey();
   if (apiKey) {
     const cloudResult = await classifyVideoTagsWithGeminiCloud(apiKey, list, instructionText);
     if (cloudResult) {
-      logAiRun("태그 분류", detail, AI_ENGINE_CLOUD, custom, { input: inputSummary, output: cloudResult, prompt: instructionText });
+      logAiRun("태그 분류", detail, AI_ENGINE_CLOUD, custom, { ...logBase, result: cloudResult });
       return cloudResult;
     }
   }
@@ -966,12 +978,12 @@ async function classifyVideoTags(videos) {
   if (session) {
     const nanoResult = await classifyVideoTagsWithNano(session, list, instructionText);
     if (nanoResult) {
-      logAiRun("태그 분류", detail, AI_ENGINE_NANO, custom, { input: inputSummary, output: nanoResult, prompt: instructionText });
+      logAiRun("태그 분류", detail, AI_ENGINE_NANO, custom, { ...logBase, result: nanoResult });
       return nanoResult;
     }
   }
 
-  logAiRun("태그 분류", `${detail} (규칙 기반 태그 유지)`, AI_ENGINE_NONE, custom, { input: inputSummary, prompt: instructionText });
+  logAiRun("태그 분류", `${detail} (규칙 기반 태그 유지)`, AI_ENGINE_NONE, custom, { ...logBase, result: AI_LOG_NO_RESULT });
 
   return null;
 }
@@ -1016,14 +1028,13 @@ const LEGACY_PROMPT_KEYS = {
   standardTitle: "ytplAdminStandardTitlePromptV1",
 };
 const PROMPT_MAX_LENGTH = 6000;
-const ADMIN_LOG_MAX_ENTRIES = 300;
-// 로그의 입력값/출력값/프롬프트 내용 각 필드에 두는 길이 상한. 영상 제목 등
-// 실제 콘텐츠가 그대로 로그에 들어가므로(관리자 화면에서 직접 요청한 것),
-// 저장소가 한없이 커지지 않도록 필드마다 잘라낸다.
-const AI_LOG_FIELD_MAX_LENGTH = 1200;
-// 어떤 프롬프트 명령으로 AI를 돌렸는지는 로그를 보는 핵심 이유라, 지시문 전체가
-// 보이도록 입력/출력보다 넉넉하게 잡는다(프롬프트 자체 상한 6000자의 절반).
-const AI_LOG_PROMPT_MAX_LENGTH = 3000;
+const ADMIN_LOG_MAX_ENTRIES = 100;
+// AI 호출 로그는 "AI에게 실제로 보낸 프롬프트 전문 / 지시 / 제공 정보 / 결과"를
+// 요약 없이 그대로 남긴다. 필드가 너무 길면 이 길이에서 잘라 "N자 중 앞부분만
+// 저장됨"이라고 적는다. 그만큼 용량이 커지므로 로그 보관 건수는 100건으로 둔다.
+const AI_LOG_FIELD_MAX_LENGTH = 20000;
+// AI 응답이 없을 때 로그의 "결과" 칸에 적는 문구
+const AI_LOG_NO_RESULT = "(AI 응답 없음 — 클라우드·기기 내장 모델 모두 결과를 만들지 못함)";
 // 관리자 로그를 기록할지 말지를 정하는 설정(체크박스 하나). 값이 없으면 기록함.
 const ADMIN_LOG_SETTINGS_KEY = "ytplAdminLogSettingsV1";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1228,22 +1239,27 @@ async function getAdminStatus() {
 // 남기지 않고, 어떤 기능이 어떤 방식으로 동작했는지만 기록한다.
 let adminLogQueue = Promise.resolve();
 
-// extra.input/output/prompt는 문자열 또는 JSON.stringify 가능한 값을 받아
-// AI_LOG_FIELD_MAX_LENGTH로 잘라 저장한다. 값이 없으면 그 필드는 아예
-// 안 붙인다(오래된 로그와 섞여도 화면에서 구분하기 쉽도록).
-function truncateForLog(value, maxLength) {
-  const limit = maxLength || AI_LOG_FIELD_MAX_LENGTH;
+// 로그 필드 값을 읽기 좋은 글로 바꿔 돌려준다. 객체는 들여쓰기 2칸의 JSON으로,
+// 문자열은 그대로 쓰고, 한도를 넘으면 잘라낸 사실을 글 끝에 밝힌다.
+// 값이 없으면 빈 문자열(그 필드는 로그에 아예 붙이지 않는다).
+function formatLogField(value) {
   if (value === undefined || value === null || value === "") {
     return "";
   }
-  const text = typeof value === "string" ? value : (() => {
+  let text;
+  if (typeof value === "string") {
+    text = value;
+  } else {
     try {
-      return JSON.stringify(value);
+      text = JSON.stringify(value, null, 2);
     } catch (_error) {
-      return String(value);
+      text = String(value);
     }
-  })();
-  return text.length > limit ? `${text.slice(0, limit)}…` : text;
+  }
+  if (text.length <= AI_LOG_FIELD_MAX_LENGTH) {
+    return text;
+  }
+  return text.slice(0, AI_LOG_FIELD_MAX_LENGTH) + "\n… (전체 " + text.length.toLocaleString("ko-KR") + "자 중 앞 " + AI_LOG_FIELD_MAX_LENGTH.toLocaleString("ko-KR") + "자만 저장됨)";
 }
 
 // 저장된 설정을 { enabled: true/false }로 돌려준다. 없거나 깨진 값은 "기록함"이다.
@@ -1265,15 +1281,21 @@ function appendAdminLog(kind, text, extra) {
       const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
       const entry = { ts: Date.now(), kind: kind, text: String(text).slice(0, 300) };
       if (extra && typeof extra === "object") {
-        const input = truncateForLog(extra.input);
-        const output = truncateForLog(extra.output);
-        const prompt = truncateForLog(extra.prompt, AI_LOG_PROMPT_MAX_LENGTH);
-        if (input) entry.input = input;
-        if (output) entry.output = output;
-        if (prompt) entry.prompt = prompt;
+        // instruction: 지시문 / provided: AI에게 제공한 정보 / result: AI의 결과 /
+        // prompt: 코드가 만들어 AI에게 실제로 보낸 최종 프롬프트 전문
+        ["instruction", "provided", "result", "prompt"].forEach(function (field) {
+          const text = formatLogField(extra[field]);
+          if (text) entry[field] = text;
+        });
       }
       list.push(entry);
-      await chrome.storage.local.set({ [ADMIN_LOG_KEY]: list.slice(-ADMIN_LOG_MAX_ENTRIES) });
+      const kept = list.slice(-ADMIN_LOG_MAX_ENTRIES);
+      try {
+        await chrome.storage.local.set({ [ADMIN_LOG_KEY]: kept });
+      } catch (_quotaError) {
+        // 저장 공간이 모자라면(웹 버전의 localStorage 등) 오래된 기록을 줄여 한 번 더 시도한다.
+        await chrome.storage.local.set({ [ADMIN_LOG_KEY]: kept.slice(-10) });
+      }
     } catch (_error) {
       // 로그 기록 실패가 본 기능을 막으면 안 된다.
     }
@@ -1353,7 +1375,7 @@ async function savePromptDraft(type, text) {
   const entry = promptStoreEntry(store, type);
   store[type] = { draft: normalized, applied: entry.applied };
   await writePromptStore(store);
-  appendAdminLog("prompt", `[${info.label}] 프롬프트 초안 저장 (${identity.email})`, { prompt: normalized });
+  appendAdminLog("prompt", `[${info.label}] 프롬프트 초안 저장 (${identity.email})`, { instruction: normalized });
   return { type: type, draft: normalized, applied: entry.applied };
 }
 
@@ -1367,7 +1389,7 @@ async function applyPrompt(type, text) {
   const applied = normalized === info.defaultText ? null : normalized;
   store[type] = { draft: null, applied: applied };
   await writePromptStore(store);
-  appendAdminLog("prompt", `[${info.label}] 프롬프트 적용 → ${applied === null ? "기본값과 동일" : "사용자 지정"} (${identity.email})`, { prompt: normalized });
+  appendAdminLog("prompt", `[${info.label}] 프롬프트 적용 → ${applied === null ? "기본값과 동일" : "사용자 지정"} (${identity.email})`, { instruction: normalized });
   return { type: type, draft: null, applied: applied };
 }
 
@@ -1731,13 +1753,17 @@ async function standardizeVideoTitles(videos) {
 
   const { text: instructionText, custom } = await resolvePrompt("standardTitle");
   const detail = `영상 ${list.length}개`;
-  const inputSummary = list.map((v) => `${v.title}${v.channel ? ` (${v.channel})` : ""}`).join(" | ");
+  const logBase = {
+    instruction: instructionText,
+    provided: { "영상 목록": list.map((v) => ({ id: v.id, title: v.title, channel: v.channel || "" })) },
+    prompt: buildStandardTitlePrompt(list, instructionText),
+  };
 
   const apiKey = await getUserGeminiApiKey();
   if (apiKey) {
     const cloudResult = await standardizeVideoTitlesWithGeminiCloud(apiKey, list, instructionText);
     if (cloudResult) {
-      logAiRun("표준제목", detail, AI_ENGINE_CLOUD, custom, { input: inputSummary, output: cloudResult, prompt: instructionText });
+      logAiRun("표준제목", detail, AI_ENGINE_CLOUD, custom, { ...logBase, result: cloudResult });
       return cloudResult;
     }
   }
@@ -1746,12 +1772,12 @@ async function standardizeVideoTitles(videos) {
   if (session) {
     const nanoResult = await standardizeVideoTitlesWithNano(session, list, instructionText);
     if (nanoResult) {
-      logAiRun("표준제목", detail, AI_ENGINE_NANO, custom, { input: inputSummary, output: nanoResult, prompt: instructionText });
+      logAiRun("표준제목", detail, AI_ENGINE_NANO, custom, { ...logBase, result: nanoResult });
       return nanoResult;
     }
   }
 
-  logAiRun("표준제목", `${detail} (규칙 기반 정리로 대체)`, AI_ENGINE_NONE, custom, { input: inputSummary, prompt: instructionText });
+  logAiRun("표준제목", `${detail} (규칙 기반 정리로 대체)`, AI_ENGINE_NONE, custom, { ...logBase, result: AI_LOG_NO_RESULT });
   return null;
 }
 
@@ -1945,7 +1971,7 @@ async function runAdminCommand(instruction) {
     }
   }
   if (!result) {
-    appendAdminLog("error", `일반 요청 해석 실패 — AI 사용 불가: "${text.slice(0, 80)}" (${identity.email})`, { input: text, prompt: routerPrompt });
+    appendAdminLog("error", `일반 요청 해석 실패 — AI 사용 불가: "${text.slice(0, 80)}" (${identity.email})`, { instruction: routerPrompt, provided: { "관리자 요청": text }, prompt: buildAdminCommandPrompt(text, routerPrompt), result: AI_LOG_NO_RESULT });
     return {
       action: "unsupported",
       summary: "AI를 사용할 수 없습니다. 설정에서 Gemini API Key를 등록하거나 기기 내장 AI 지원 여부를 확인해주세요.",
@@ -1966,7 +1992,7 @@ async function runAdminCommand(instruction) {
     await resetAllPrompts();
   }
 
-  appendAdminLog("admin", `일반 요청 실행 [${result.action}] "${text.slice(0, 80)}" (${identity.email})`, { input: text, output: result, prompt: routerPrompt });
+  appendAdminLog("admin", `일반 요청 실행 [${result.action}] "${text.slice(0, 80)}" (${identity.email})`, { instruction: routerPrompt, provided: { "관리자 요청": text }, prompt: buildAdminCommandPrompt(text, routerPrompt), result: result });
   return result;
 }
 
@@ -2208,13 +2234,17 @@ async function analyzePlaylistWithPrompt(userPrompt, videoTitles) {
 
   const { text: instructionText, custom } = await resolvePrompt("playlistAnalysis");
   const detail = `영상 ${Array.isArray(videoTitles) ? videoTitles.length : 0}개`;
-  const inputSummary = `사용자 요청: "${userPrompt}" / 영상: ${(Array.isArray(videoTitles) ? videoTitles : []).join(", ")}`;
+  const logBase = {
+    instruction: instructionText,
+    provided: { "사용자 요청": String(userPrompt), "영상 제목": Array.isArray(videoTitles) ? videoTitles : [] },
+    prompt: buildCustomAnalysisPrompt(userPrompt, videoTitles, instructionText),
+  };
 
   const apiKey = await getUserGeminiApiKey();
   if (apiKey) {
     const cloudResult = await analyzePlaylistWithGeminiCloud(apiKey, userPrompt, videoTitles, instructionText);
     if (cloudResult) {
-      logAiRun("목록 분석", detail, AI_ENGINE_CLOUD, custom, { input: inputSummary, output: cloudResult, prompt: instructionText });
+      logAiRun("목록 분석", detail, AI_ENGINE_CLOUD, custom, { ...logBase, result: cloudResult });
       return cloudResult;
     }
   }
@@ -2223,12 +2253,12 @@ async function analyzePlaylistWithPrompt(userPrompt, videoTitles) {
   if (session) {
     const nanoResult = await analyzePlaylistWithNano(session, userPrompt, videoTitles, instructionText);
     if (nanoResult) {
-      logAiRun("목록 분석", detail, AI_ENGINE_NANO, custom, { input: inputSummary, output: nanoResult, prompt: instructionText });
+      logAiRun("목록 분석", detail, AI_ENGINE_NANO, custom, { ...logBase, result: nanoResult });
       return nanoResult;
     }
   }
 
-  logAiRun("목록 분석", `${detail} (실패)`, AI_ENGINE_NONE, custom, { input: inputSummary, prompt: instructionText });
+  logAiRun("목록 분석", `${detail} (실패)`, AI_ENGINE_NONE, custom, { ...logBase, result: AI_LOG_NO_RESULT });
   throw new Error(
     "AI를 사용할 수 없습니다. 설정 탭에서 Gemini API Key를 등록하거나, Chrome의 내장 AI(Gemini Nano) 지원 여부를 확인해주세요.",
   );
