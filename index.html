@@ -7,8 +7,8 @@
     <script src="./config.local.js"></script>
     <script src="./chrome-shim.js"></script>
     <script src="./background.js"></script>
-    <script type="module" crossorigin src="./assets/index-24nFerbd.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DYn1_wCb.css">
+    <script type="module" crossorigin src="./assets/index-bHgui9av.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-rwb1TFq_.css">
   </head>
   <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-20">
 
@@ -752,7 +752,7 @@
             </select>
           </div>
 
-          <p id="admin-prompt-usage" class="hidden text-[11px] text-slate-500 leading-relaxed"></p>
+          <p id="admin-prompt-usage" class="hidden text-[11px] text-slate-500 leading-relaxed whitespace-pre-wrap"></p>
           <div id="admin-prompt-status" class="hidden text-[11px] px-2.5 py-1.5 rounded-lg border"></div>
 
           <textarea
@@ -762,7 +762,7 @@
             placeholder="예: 재생목록 목록을 좀 더 크게 해줘"
             class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 resize-y leading-relaxed"
           ></textarea>
-          <p id="admin-prompt-fixed-note" class="hidden text-[10px] text-slate-400 leading-relaxed"></p>
+          <p id="admin-prompt-fixed-note" class="hidden text-[10px] text-slate-400 leading-relaxed whitespace-pre-wrap"></p>
 
           <div id="admin-prompt-log" class="hidden text-[11px] px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 space-y-1 max-h-32 overflow-y-auto"></div>
 
@@ -1414,7 +1414,7 @@
         <!-- 헤더 -->
         <div class="flex items-start justify-between border-b border-slate-100 pb-3">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+            <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center">
               <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
@@ -1432,14 +1432,14 @@
         <!-- 분석 대상 재생목록 선택 -->
         <div class="flex items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
           <span class="text-xs font-bold text-slate-700 shrink-0">분석 대상 재생목록:</span>
-          <select id="analysis-target-select" class="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-purple-500 cursor-pointer flex-1 min-w-0">
+          <select id="analysis-target-select" class="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-slate-500 cursor-pointer flex-1 min-w-0">
             <!-- JS 동적 세팅 -->
           </select>
         </div>
 
         <!-- 로딩 상태 스피너 -->
         <div id="analysis-loading-box" class="py-12 text-center space-y-3 hidden">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-600 border-t-transparent"></div>
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-900 border-t-transparent"></div>
           <p class="text-xs font-bold text-slate-700">재생목록 콘텐츠 및 영상 속성 분석 중...</p>
         </div>
 
@@ -1457,20 +1457,15 @@
             <button type="button" id="analysis-back-to-default-btn" class="hidden shrink-0 text-[11px] font-semibold text-slate-500 hover:text-slate-700 underline underline-offset-2 cursor-pointer">← 기본 분석으로</button>
           </div>
 
-          <!-- 질문을 이해하지 못했거나 AI 호출이 실패했을 때, 에러 문구만
-               보여주고 끝내는 대신 바로 다시 시도해볼 수 있는 예시를 보여준다. -->
+          <!-- 질문을 이해하지 못했거나 AI 호출이 실패했을 때 보여주는 안내 -->
           <div id="analysis-prompt-error-box" class="hidden p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
             <p id="analysis-prompt-error-text" class="text-xs font-semibold text-rose-700"></p>
-            <p class="text-[11px] text-rose-500">이렇게 다시 물어보세요:</p>
-            <div id="analysis-prompt-error-suggestions" class="flex flex-wrap gap-1.5">
-              <!-- JS 동적 예시 칩 -->
-            </div>
           </div>
 
           <!-- 장르 분류 결과 화면 (기본 장르 분석, 또는 프롬프트로 "그룹으로 나눠줘" 요청 시) -->
           <div id="analysis-genre-view" class="space-y-4">
             <!-- 1. 장르/속성 비중 프로그레스 바 -->
-            <div class="bg-purple-50/50 border border-purple-100 rounded-xl p-4 space-y-2">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
               <div class="flex items-center justify-between text-xs">
                 <span class="font-bold text-slate-900 flex items-center gap-1">
                   <span>📈</span> 분석된 장르
@@ -1521,10 +1516,10 @@
           <!-- 검색 결과 화면 (프롬프트로 특정 영상을 찾아달라고 요청했을 때) -->
           <div id="analysis-search-view" class="hidden space-y-3">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold text-purple-900 flex items-center gap-1">
+              <span class="font-bold text-slate-900 flex items-center gap-1">
                 <span>🔍</span> 검색 결과
               </span>
-              <span id="analysis-search-count" class="text-purple-600 font-mono font-bold">0개</span>
+              <span id="analysis-search-count" class="text-slate-900 font-mono font-bold">0개</span>
             </div>
 
             <p id="analysis-search-summary" class="text-xs text-slate-600 leading-relaxed"></p>
@@ -1547,17 +1542,12 @@
 
         <!-- 프롬프트로 새롭게 분석하기 -->
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-          <!-- 눌러보면 바로 결과를 보여주는 예시 질문들 — 뭘 물어볼 수 있는지
-               감이 안 잡히는 사용자를 위한 것. -->
-          <div id="analysis-prompt-suggestions" class="flex flex-wrap gap-1.5">
-            <!-- JS 동적 예시 칩 -->
-          </div>
           <div class="flex items-center gap-2">
             <input
               id="analysis-prompt-input"
               type="text"
-              placeholder="원하는 분석 방식을 입력해보세요 (예: 분위기별로 나눠줘)"
-              class="flex-1 min-w-0 text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-500"
+              placeholder="질문이나 분석 방식을 입력하세요"
+              class="flex-1 min-w-0 text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-500"
             />
             <button
               type="button"

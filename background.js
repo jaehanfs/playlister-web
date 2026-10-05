@@ -1044,58 +1044,43 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 7;
+const PROMPT_DEFAULTS_VERSION = 8;
 
 const PROMPT_TYPES = [
   {
     id: "standardTitle",
     label: "표준제목",
-    usage: "'자동제목정리' 토글을 켤 때 AI가 지저분한 영상 제목을 표준 제목(제목 + 부가 내용)으로 정리하는 데 쓰입니다.",
-    fixedNote: "출력 형식(JSON)과 영상 목록(id/제목/채널)은 이 지시문 뒤에 자동으로 붙습니다.",
-    defaultText: [
-      `영상 제목에서 홍보 문구·이모지·해시태그·화질 표기(4K, MV 등)를 빼고 핵심 제목만 남기세요. 아티스트나 부가 설명은 "content"에 따로 적고, 없으면 비우세요. 없는 내용은 지어내지 마세요.`,
-    ].join("\n"),
+    usage: "- 용도: 영상 제목을 \"표준 제목\"으로 정리\n- 실행 시점: '자동제목정리' 토글을 켤 때\n- 결과: 제목 + 부가 내용(아티스트 등)으로 나뉘어 저장",
+    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용\n  · 출력 형식(JSON)\n  · 영상 목록(id / 제목 / 채널)",
+    defaultText: "영상 제목을 표준 제목으로 정리하세요.\n- 홍보 문구, 이모지, 해시태그, 화질 표기(4K, MV 등)는 뺍니다.\n- 핵심 제목만 \"title\"에 남깁니다.\n- 아티스트·부가 설명은 \"content\"에 따로 적고, 없으면 비웁니다.\n- 없는 내용은 지어내지 않습니다.",
   },
   {
     id: "tag",
     label: "태그",
-    usage: "재생목록을 처음 불러올 때 AI가 영상마다 기본 태그를 분류하는 데 쓰입니다.",
-    fixedNote: "출력 형식(JSON)과 영상 목록(id/제목/채널)은 이 지시문 뒤에 자동으로 붙습니다.",
-    defaultText: [
-      `영상마다 장르·주제·형식·분위기를 나타내는 한국어 태그를 2~4개 붙이세요. 제목에 장르가 없어도 내용을 추론하고, 내용이 다르면 태그도 다르게 주세요. 제목 자체나 제목의 일부, 같은 태그의 중복은 쓰지 마세요.`,
-    ].join("\n"),
+    usage: "- 용도: 영상마다 기본 태그를 분류\n- 실행 시점: 재생목록을 처음 불러올 때\n- 결과: 영상별 태그가 목록과 필터에 표시",
+    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용\n  · 출력 형식(JSON)\n  · 영상 목록(id / 제목 / 채널)",
+    defaultText: "영상마다 한국어 태그를 붙이세요.\n- 영상당 2~4개를 붙입니다.\n- 장르·주제·형식·분위기를 나타내는 태그를 씁니다.\n- 제목에 장르가 없어도 내용을 추론합니다.\n- 내용이 다른 영상은 태그도 다르게 줍니다.\n- 제목 자체나 제목의 일부, 같은 태그의 중복은 쓰지 않습니다.",
   },
   {
     id: "playlistInfo",
     label: "재생목록 추천",
-    usage: "재생목록 수정 화면의 '내용 AI 추천'에서 제목·설명 후보를 만들 때 쓰입니다.",
-    fixedNote: "{{COUNT}}는 추천 개수로 자동 치환됩니다. 현재 제목/설명, 영상 제목 목록과 출력 형식은 뒤에 자동으로 붙습니다.",
-    defaultText: [
-      `이 재생목록의 영상 제목을 보고 제목 {{COUNT}}개와 설명 {{COUNT}}개를 한국어로 추천하세요. 제목은 25자 이내로 짧게, 설명은 1~2문장으로, 후보마다 분위기를 다르게 쓰세요.`,
-    ].join("\n"),
+    usage: "- 용도: 재생목록의 제목·설명 후보 추천\n- 실행 시점: 재생목록 수정 화면에서 '내용 AI 추천'을 누를 때\n- 결과: 추천 후보를 눌러 제목·설명 입력칸에 바로 채움",
+    fixedNote: "- {{COUNT}}: 추천 개수로 자동 치환\n- 이 지시문 뒤에 자동으로 붙는 내용\n  · 현재 제목·설명\n  · 영상 제목 목록\n  · 출력 형식(JSON)",
+    defaultText: "이 재생목록의 영상 제목을 보고 제목과 설명을 한국어로 추천하세요.\n- 제목 {{COUNT}}개, 설명 {{COUNT}}개를 추천합니다.\n- 제목은 25자 이내로 짧게 씁니다.\n- 설명은 1~2문장으로 씁니다.\n- 후보마다 분위기를 다르게 씁니다.",
   },
   {
     id: "playlistAnalysis",
     label: "목록 분석",
-    usage: "재생목록의 '목록 분석'에서 사용자가 입력한 요청을 해석해 영상을 검색하거나 그룹으로 나눌 때 쓰입니다.",
-    fixedNote: "사용자가 입력한 요청, 출력 형식, 영상 목록(번호 매김)은 이 지시문 뒤에 자동으로 붙습니다.",
-    defaultText: [
-      `아래 요청대로 재생목록을 분석하세요. 영상을 찾는 요청이면 "mode"를 "search"로 하고 맞는 영상 번호만 "matches"에 넣으세요. 나누거나 정리하는 요청이면 "mode"를 "group"으로 하고 모든 영상을 "groups"에 넣으세요(이름은 12자 이내, 애매하면 "기타"). 쓰지 않는 쪽은 빈 배열로 두고, 결과는 한 문장으로 "summary"에 적으세요. 찾기·나누기가 아닌 일반 질문(예: "이 목록 어떤 것 같아?")이면 "mode"를 "answer"로 하고, 영상 제목을 근거로 한국어 3~5문장 답변을 "answer"에 적으세요.`,
-    ].join("\n"),
+    usage: "- 용도: 재생목록 분석 요청을 해석\n- 실행 시점: 재생목록의 '목록 분석'에서 질문을 입력할 때\n- 요청 유형\n  · 찾기: 조건에 맞는 영상만 보여줌\n  · 나누기: 그룹으로 정리해서 보여줌\n  · 일반 질문: 목록 내용을 근거로 답변",
+    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용\n  · 사용자가 입력한 요청\n  · 출력 형식(JSON)\n  · 영상 목록(번호 매김)",
+    defaultText: "아래 요청대로 재생목록을 분석하세요. 요청 유형에 따라 \"mode\"를 정합니다.\n1. 영상을 찾는 요청\n   - \"mode\"를 \"search\"로 합니다.\n   - 조건에 맞는 영상 번호만 \"matches\"에 넣습니다.\n2. 나누거나 정리하는 요청\n   - \"mode\"를 \"group\"으로 합니다.\n   - 모든 영상을 \"groups\"에 넣습니다.\n   - 그룹 이름은 12자 이내로 쓰고, 애매한 영상은 \"기타\"로 묶습니다.\n3. 일반 질문(예: \"이 목록 어떤 것 같아?\")\n   - \"mode\"를 \"answer\"로 합니다.\n   - 영상 제목을 근거로 한국어 3~5문장 답변을 \"answer\"에 적습니다.\n공통 규칙\n- 쓰지 않는 쪽(\"matches\"/\"groups\")은 빈 배열로 둡니다.\n- 결과는 한 문장으로 \"summary\"에 적습니다.",
   },
   {
     id: "adminCommand",
     label: "일반 요청 해석",
-    usage: "이 화면에서 '선택 안함'으로 두고 문장으로 요청했을 때, 그 문장을 어떤 동작(크기 조절/프롬프트 설정/초기화)으로 실행할지 AI가 해석하는 데 쓰입니다.",
-    fixedNote: "요청 문장은 이 지시문 뒤에 자동으로 붙습니다. 잘못 고치면 일반 요청이 동작하지 않을 수 있으니, 문제가 생기면 '선택 안함'에서 \"프롬프트를 원래대로 되돌려줘\"라고 요청하세요.",
-    defaultText: [
-      `관리자의 요청을 아래 동작 중 하나로 해석하세요. 돌려 말해도 핵심 의도를 찾아 가장 가까운 동작에 연결하세요.`,
-      `1. "resize": 화면 크기 조절. "target"은 "thumbnail"(썸네일), "text"(제목 글자), "button"(전체 재생·목록 분석 같은 주요 버튼), "both"(목록 썸네일+글자, 재생목록/영상 목록 요청일 때만). 버튼 요청은 반드시 "button". "scaleDelta"는 변화 비율(0.2 = 20% 키움, -0.15 = 15% 줄임, 숫자 없이 크게/작게면 ±0.2).`,
-      `2. "set_prompt": AI 기능의 동작 변경. "promptCategory"는 "tag"(태그), "standardTitle"(표준제목), "playlistInfo"(재생목록 추천), "playlistAnalysis"(목록 분석). "promptText"는 그 기능 프롬프트 끝에 붙일 한국어 지시문(관리자에게 하는 답변이 아니라 독립된 지시문). 중복 영상 판정은 현재 영상 ID만으로 이뤄지고 프롬프트를 쓰지 않으므로, 중복 판정 관련 요청은 "unsupported"로 처리하세요.`,
-      `3. "reset": 되돌리기. "resetTarget"은 "prompts"(프롬프트만), "scale"(크기만), "all"(둘 다, 불분명하면 이것).`,
-      `4. "unsupported": 위에 없는 요청. 지원하는 것과 아닌 것을 "summary"에 짧게 설명하세요.`,
-      `어떤 동작이든 이해한 내용을 한 문장으로 "summary"(한국어)에 적고, JSON으로만 답하세요.`,
-    ].join("\n"),
+    usage: "- 용도: 문장으로 쓴 요청을 AI가 해석해 바로 실행\n- 실행 시점: 위 선택 상자를 '선택 안함'으로 두고 \"적용하기\"를 누를 때\n- 할 수 있는 일\n  · 화면 크기 조절(썸네일·글자·버튼)\n  · AI 기능 프롬프트에 지시문 추가\n  · 설정 되돌리기\n- \"저장하기\"는 입력한 질문만 보관하고 실행하지 않음",
+    fixedNote: "- 이 지시문 뒤에 자동으로 붙는 내용: 입력한 요청 문장\n- 주의: 잘못 고치면 일반 요청이 동작하지 않을 수 있음\n- 복구: '선택 안함'에서 \"프롬프트를 원래대로 되돌려줘\"라고 요청",
+    defaultText: "관리자의 요청을 아래 동작 중 하나로 해석하세요. 돌려 말해도 핵심 의도를 찾아 가장 가까운 동작에 연결합니다.\n1. \"resize\": 화면 크기 조절\n   - \"target\": \"thumbnail\"(썸네일), \"text\"(제목 글자), \"button\"(전체 재생·목록 분석 같은 주요 버튼), \"both\"(목록 썸네일+글자, 재생목록/영상 목록 요청일 때만)\n   - 버튼 요청은 반드시 \"button\"으로 합니다.\n   - \"scaleDelta\": 변화 비율(0.2 = 20% 키움, -0.15 = 15% 줄임). 숫자 없이 크게/작게면 ±0.2\n2. \"set_prompt\": AI 기능의 동작 변경\n   - \"promptCategory\": \"tag\"(태그), \"standardTitle\"(표준제목), \"playlistInfo\"(재생목록 추천), \"playlistAnalysis\"(목록 분석)\n   - \"promptText\": 그 기능 프롬프트 끝에 붙일 한국어 지시문(관리자에게 하는 답변이 아니라 독립된 지시문)\n   - 중복 영상 판정은 영상 ID만으로 이뤄지고 프롬프트를 쓰지 않으므로, 중복 판정 관련 요청은 \"unsupported\"로 처리합니다.\n3. \"reset\": 되돌리기\n   - \"resetTarget\": \"prompts\"(프롬프트만), \"scale\"(크기만), \"all\"(둘 다, 불분명하면 이것)\n4. \"unsupported\": 위에 없는 요청\n   - 지원하는 것과 아닌 것을 \"summary\"에 짧게 설명합니다.\n공통 규칙\n- 이해한 내용을 한 문장으로 \"summary\"(한국어)에 적습니다.\n- JSON으로만 답합니다.",
   },
 ];
 
@@ -1306,9 +1291,46 @@ function appendAdminLog(kind, text, extra) {
   return adminLogQueue;
 }
 
+// 제공 정보·결과 칸이 JSON으로 남지 않은 옛 기록(예전 input/output 형식, 제공 정보가
+// 없는 AI 호출 기록)을 가려낸다. 길어서 잘린 기록은 잘린 표시를 떼고 JSON인지 본다.
+function isLegacyLogEntry(entry) {
+  if (!entry || typeof entry !== "object") {
+    return true;
+  }
+  if (entry.input !== undefined || entry.output !== undefined) {
+    return true;
+  }
+  if (entry.provided === undefined) {
+    return entry.kind === "ai";
+  }
+  const withoutTruncationNote = String(entry.provided).replace(/\n… \(전체 [\s\S]*$/, "");
+  try {
+    JSON.parse(withoutTruncationNote);
+    return false;
+  } catch (_error) {
+    return String(entry.provided) === withoutTruncationNote;
+  }
+}
+
+async function purgeLegacyAdminLogs() {
+  adminLogQueue = adminLogQueue.then(async function () {
+    try {
+      const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
+      const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
+      const kept = list.filter(function (entry) { return !isLegacyLogEntry(entry); });
+      if (kept.length !== list.length) {
+        await chrome.storage.local.set({ [ADMIN_LOG_KEY]: kept });
+      }
+    } catch (_error) {
+      // 정리 실패가 로그 조회를 막으면 안 된다.
+    }
+  });
+  return adminLogQueue;
+}
+
 async function getAdminLogs() {
   await requireAdmin();
-  await adminLogQueue;
+  await purgeLegacyAdminLogs();
   const stored = await chrome.storage.local.get(ADMIN_LOG_KEY);
   const list = Array.isArray(stored[ADMIN_LOG_KEY]) ? stored[ADMIN_LOG_KEY] : [];
   return { logs: list.slice().reverse(), settings: await readAdminLogSettings() };
@@ -1378,7 +1400,7 @@ async function savePromptDraft(type, text) {
   const entry = promptStoreEntry(store, type);
   store[type] = { draft: normalized, applied: entry.applied };
   await writePromptStore(store);
-  appendAdminLog("prompt", `[${info.label}] 프롬프트 초안 저장 (${identity.email})`, { instruction: normalized });
+  appendAdminLog("prompt", `[${info.label}] 프롬프트 초안 저장 (${identity.email})`, { instruction: normalized, provided: { "프롬프트 유형": info.label, "계정": identity.email, "저장 방식": "초안(아직 AI에 반영 안 됨)" } });
   return { type: type, draft: normalized, applied: entry.applied };
 }
 
@@ -1392,7 +1414,7 @@ async function applyPrompt(type, text) {
   const applied = normalized === info.defaultText ? null : normalized;
   store[type] = { draft: null, applied: applied };
   await writePromptStore(store);
-  appendAdminLog("prompt", `[${info.label}] 프롬프트 적용 → ${applied === null ? "기본값과 동일" : "사용자 지정"} (${identity.email})`, { instruction: normalized });
+  appendAdminLog("prompt", `[${info.label}] 프롬프트 적용 → ${applied === null ? "기본값과 동일" : "사용자 지정"} (${identity.email})`, { instruction: normalized, provided: { "프롬프트 유형": info.label, "계정": identity.email, "적용 결과": applied === null ? "기본값과 동일" : "사용자 지정" } });
   return { type: type, draft: null, applied: applied };
 }
 
