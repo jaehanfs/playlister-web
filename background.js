@@ -1030,7 +1030,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 5;
+const PROMPT_DEFAULTS_VERSION = 6;
 
 const PROMPT_TYPES = [
   {
@@ -1066,7 +1066,7 @@ const PROMPT_TYPES = [
     usage: "재생목록의 '목록 분석'에서 사용자가 입력한 요청을 해석해 영상을 검색하거나 그룹으로 나눌 때 쓰입니다.",
     fixedNote: "사용자가 입력한 요청, 출력 형식, 영상 목록(번호 매김)은 이 지시문 뒤에 자동으로 붙습니다.",
     defaultText: [
-      `아래 요청대로 재생목록을 분석하세요. 영상을 찾는 요청이면 "mode"를 "search"로 하고 맞는 영상 번호만 "matches"에 넣으세요. 나누거나 정리하는 요청이면 "mode"를 "group"으로 하고 모든 영상을 "groups"에 넣으세요(이름은 12자 이내, 애매하면 "기타"). 쓰지 않는 쪽은 빈 배열로 두고, 결과는 한 문장으로 "summary"에 적으세요.`,
+      `아래 요청대로 재생목록을 분석하세요. 영상을 찾는 요청이면 "mode"를 "search"로 하고 맞는 영상 번호만 "matches"에 넣으세요. 나누거나 정리하는 요청이면 "mode"를 "group"으로 하고 모든 영상을 "groups"에 넣으세요(이름은 12자 이내, 애매하면 "기타"). 쓰지 않는 쪽은 빈 배열로 두고, 결과는 한 문장으로 "summary"에 적으세요. 찾기·나누기가 아닌 일반 질문(예: "이 목록 어떤 것 같아?")이면 "mode"를 "answer"로 하고, 영상 제목을 근거로 한국어 3~5문장 답변을 "answer"에 적으세요.`,
     ].join("\n"),
   },
   {
@@ -1985,7 +1985,8 @@ function buildCustomAnalysisPrompt(userPrompt, videoTitles, instructionText) {
     instructionText || PROMPT_TYPE_MAP.playlistAnalysis.defaultText,
     "",
     `User's instruction: ${sanitizeAiPromptText(userPrompt)}`,
-    'Respond with JSON only, matching this shape: {"mode": "search" | "group", "summary": "...", "matches": [1, 2], "groups": [{"name": "...", "videoIndexes": [1, 2]}]}.',
+    'Respond with JSON only, matching this shape: {"mode": "search" | "group" | "answer", "summary": "...", "answer": "...", "matches": [1, 2], "groups": [{"name": "...", "videoIndexes": [1, 2]}]}.',
+    'If the instruction is a general question or comment about the playlist (neither finding specific videos nor splitting them into groups), use mode "answer": put a helpful reply in Korean (3-5 sentences, based on the video titles below) in "answer", and leave "matches" and "groups" as empty arrays.',
     "",
     "Videos in this playlist (1-based numbering):",
   ];
@@ -2028,19 +2029,34 @@ function normalizeCustomAnalysisResult(parsed, videoCount) {
         .filter((group) => group.videoIndexes.length > 0)
     : [];
 
+  const answer =
+    typeof parsed.answer === "string" && parsed.answer.trim()
+      ? parsed.answer.trim().slice(0, 1500)
+      : "";
+
+  // 영상을 찾거나 나누는 요청이 아닌 일반 질문 — 답변 글만 돌려준다.
+  // (answer가 비어 있으면 summary라도 답으로 쓴다.)
+  if (parsed.mode === "answer") {
+    const text = answer || summary;
+    return text ? { mode: "answer", summary: "", answer: text, matches: [], groups: [] } : null;
+  }
+
   // mode가 명확하지 않게 와도(모델이 지시를 안 따른 경우), 실제로 채워진
   // 필드를 보고 최대한 합리적으로 판단한다.
   const isSearchMode = parsed.mode === "search" || (parsed.mode !== "group" && matches.length > 0 && groups.length === 0);
 
   if (isSearchMode) {
     if (matches.length === 0) {
-      return null;
+      // 조건에 맞는 영상이 하나도 없다는 설명이 있으면 오류로 버리지 않고 답변으로 보여준다.
+      const text = answer || summary;
+      return text ? { mode: "answer", summary: "", answer: text, matches: [], groups: [] } : null;
     }
     return { mode: "search", summary: summary, matches: matches, groups: [] };
   }
 
   if (groups.length === 0) {
-    return null;
+    const text = answer || summary;
+    return text ? { mode: "answer", summary: "", answer: text, matches: [], groups: [] } : null;
   }
 
   return { mode: "group", summary: summary, matches: [], groups: groups };
@@ -2051,6 +2067,7 @@ const CUSTOM_ANALYSIS_CLOUD_SCHEMA = {
   properties: {
     mode: { type: "STRING" },
     summary: { type: "STRING" },
+    answer: { type: "STRING" },
     matches: { type: "ARRAY", items: { type: "INTEGER" } },
     groups: {
       type: "ARRAY",
@@ -2072,6 +2089,7 @@ const CUSTOM_ANALYSIS_NANO_SCHEMA = {
   properties: {
     mode: { type: "string" },
     summary: { type: "string" },
+    answer: { type: "string" },
     matches: { type: "array", items: { type: "integer" } },
     groups: {
       type: "array",

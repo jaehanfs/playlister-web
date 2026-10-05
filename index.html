@@ -4,11 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>플레이리스터</title>
-    <script src="./config.local.js"></script>
-    <script src="./chrome-shim.js"></script>
-    <script src="./background.js"></script>
-    <script type="module" crossorigin src="./assets/index-Fq36KV5o.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-f1iZXn93.css">
+    <script type="module" crossorigin src="/assets/index-B00Uq0Zb.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DnLmdNFw.css">
   </head>
   <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-20">
 
@@ -1452,10 +1449,10 @@
             <!-- 1. 장르/속성 비중 프로그레스 바 -->
             <div class="bg-purple-50/50 border border-purple-100 rounded-xl p-4 space-y-2">
               <div class="flex items-center justify-between text-xs">
-                <span class="font-bold text-purple-900 flex items-center gap-1">
+                <span class="font-bold text-slate-900 flex items-center gap-1">
                   <span>📈</span> 분석된 장르
                 </span>
-                <span id="analysis-total-count" class="text-purple-600 font-mono font-bold">총 0개 동영상</span>
+                <span id="analysis-total-count" class="text-slate-900 font-mono font-bold">총 0개 동영상</span>
               </div>
 
               <!-- 구성 비율 바 -->
@@ -1490,14 +1487,12 @@
                 <!-- JS 동적 렌더링 -->
               </div>
             </div>
+          </div>
 
-            <!-- 4. 대화형 실행 액션 버튼들 -->
-            <div class="pt-3 border-t border-slate-100 space-y-2">
-              <h4 class="text-xs font-bold text-slate-800">권장 조치 실행</h4>
-              <div id="analysis-actions-box" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <!-- JS 동적 액션 버튼들 -->
-              </div>
-            </div>
+          <!-- 답변 화면 (영상을 찾거나 나누는 요청이 아닌 일반 질문을 했을 때) -->
+          <div id="analysis-answer-view" class="hidden space-y-2">
+            <p id="analysis-answer-question" class="text-[11px] text-slate-400"></p>
+            <p id="analysis-answer-text" class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-xl p-4"></p>
           </div>
 
           <!-- 검색 결과 화면 (프롬프트로 특정 영상을 찾아달라고 요청했을 때) -->
