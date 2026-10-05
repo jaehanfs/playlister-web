@@ -180,6 +180,9 @@ chrome.runtime.onMessage.addListener(function (message, _sender, sendResponse) {
     "ytpl:setAdminLogSettings": function () {
       return setAdminLogSettings(message.enabled);
     },
+    "ytpl:getDataOverview": function () {
+      return getDataOverview();
+    },
     "ytpl:exportAdminData": function () {
       return exportAdminData();
     },
@@ -1041,7 +1044,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 6;
+const PROMPT_DEFAULTS_VERSION = 7;
 
 const PROMPT_TYPES = [
   {
@@ -1498,6 +1501,131 @@ async function removeAdminUser(email) {
   await chrome.storage.local.set({ [ADMINS_KEY]: admins.filter((item) => item !== target) });
   appendAdminLog("admin", `관리자 해제: ${target} (by ${identity.email})`);
   return buildAdminUsersView(identity.email);
+}
+
+// ---- 데이터 관리(앱이 알고 있는 모든 데이터 보기) ----
+// 이 확장 프로그램이 이 브라우저에 가지고 있는 데이터를 한 번에 모아 돌려준다.
+// 읽기 전용이며, 액세스 토큰·Gemini API 키 같은 비밀 값은 "있다/없다"와 크기만
+// 알려주고 값 자체는 어디에도 담지 않는다.
+const DATA_OVERVIEW_KEYS = {
+  frontendLibrary: "ytplFrontendLibraryCacheV1",
+  localVideoOverrides: "ytplLocalVideoOverridesV1",
+  videoOrderOverrides: "ytplVideoOrderOverridesV1",
+  playlistOrderOverride: "ytplPlaylistOrderOverrideV1",
+  playlistInfoOverrides: "ytplPlaylistInfoOverridesV1",
+  darkMode: "ytplDarkModeEnabled",
+  zoom: "ytplUiZoomLevel",
+  onboardingDone: "ytplOnboardingApiKeyStepDoneV1",
+};
+
+function measureStoredBytes(value) {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).length;
+  } catch (_error) {
+    return 0;
+  }
+}
+
+async function getDataOverview() {
+  const identity = await requireAdmin();
+  const all = await chrome.storage.local.get(null);
+  const keys = DATA_OVERVIEW_KEYS;
+
+  // 1) 재생목록과 동영상 — 사이드패널이 마지막으로 그린 스냅샷 기준(영상은 한 번이라도
+  // 열어본 재생목록만 들어 있다).
+  const frontend = all[keys.frontendLibrary];
+  const order = frontend && Array.isArray(frontend.order) ? frontend.order : [];
+  const data = (frontend && frontend.data) || {};
+  const playlists = order.filter((id) => data[id]).map((id) => {
+    const p = data[id];
+    const videos = Array.isArray(p.videos) ? p.videos : [];
+    return {
+      id: id,
+      title: p.title || "",
+      description: p.desc || "",
+      itemCount: Number(p.itemCount) || videos.length,
+      privacyStatus: p.privacyStatus || "",
+      publishedAt: p.publishedAt || "",
+      videosLoaded: Boolean(p.videosLoaded),
+      videos: videos.map((v) => ({
+        id: v.id || "",
+        title: v.title || "",
+        channel: v.channel || "",
+        duration: v.duration || "",
+        views: v.views || "",
+        privacyStatus: v.privacyStatus || "",
+        unavailable: Boolean(v.isUnavailable),
+        tags: Array.isArray(v.tags) ? v.tags : [],
+        contentNote: v.contentNote || "",
+      })),
+    };
+  });
+
+  // 2) 이 앱에서만 쓰는 사용자 지정 값
+  const videoOverrides = all[keys.localVideoOverrides] || {};
+  const overrideList = Object.keys(videoOverrides);
+  const customTagCount = overrideList.filter((id) => videoOverrides[id] && Array.isArray(videoOverrides[id].tags) && videoOverrides[id].tags.length > 0).length;
+  const cleanedTitleCount = overrideList.filter((id) => videoOverrides[id] && videoOverrides[id].contentNote).length;
+
+  // 3) 설정
+  const listScale = all[LIST_SCALE_STORAGE_KEY] || {};
+  const settings = {
+    darkMode: all[keys.darkMode] === true,
+    zoomLevel: all[keys.zoom] === undefined ? null : all[keys.zoom],
+    listScale: { thumb: listScale.thumb || 1, text: listScale.text || 1, button: listScale.button || 1 },
+    onboardingApiKeyStepDone: Boolean(all[keys.onboardingDone]),
+    geminiApiKeyRegistered: typeof all[USER_GEMINI_API_KEY_STORAGE_KEY] === "string" && all[USER_GEMINI_API_KEY_STORAGE_KEY].length > 0,
+  };
+
+  // 4) 관리자 정보
+  const promptStore = await readPromptStore();
+  const logSettings = await readAdminLogSettings();
+  const logList = Array.isArray(all[ADMIN_LOG_KEY]) ? all[ADMIN_LOG_KEY] : [];
+  const admin = {
+    me: identity.email,
+    admins: await getAdminEmails(),
+    logEnabled: logSettings.enabled,
+    logCount: logList.length,
+    prompts: PROMPT_TYPES.map((info) => {
+      const entry = promptStoreEntry(promptStore, info.id);
+      return {
+        id: info.id,
+        label: info.label,
+        source: entry.applied !== null ? "사용자 지정" : "기본",
+        hasDraft: entry.draft !== null,
+      };
+    }),
+  };
+
+  // 5) 저장소 현황 — 키별 대략 용량(비밀 값은 크기만).
+  const storage = Object.keys(all)
+    .filter((key) => key.indexOf("ytpl") === 0)
+    .map((key) => ({ key: key, bytes: measureStoredBytes(all[key]) }))
+    .sort((a, c) => c.bytes - a.bytes);
+  const totalBytes = storage.reduce((sum, item) => sum + item.bytes, 0);
+
+  return {
+    generatedAt: Date.now(),
+    account: identity.email,
+    playlists: playlists,
+    totals: {
+      playlistCount: playlists.length,
+      loadedPlaylistCount: playlists.filter((p) => p.videosLoaded).length,
+      videoCount: playlists.reduce((sum, p) => sum + p.videos.length, 0),
+    },
+    customData: {
+      videosWithOverrides: overrideList.length,
+      customTagVideos: customTagCount,
+      cleanedTitleVideos: cleanedTitleCount,
+      reorderedPlaylists: Object.keys(all[keys.videoOrderOverrides] || {}).length,
+      playlistOrderCustomized: Array.isArray(all[keys.playlistOrderOverride]) && all[keys.playlistOrderOverride].length > 0,
+      playlistInfoOverrides: Object.keys(all[keys.playlistInfoOverrides] || {}).length,
+    },
+    settings: settings,
+    admin: admin,
+    storage: storage,
+    totalBytes: totalBytes,
+  };
 }
 
 // ---- 데이터 내보내기 / 가져오기 ----

@@ -7,8 +7,8 @@
     <script src="./config.local.js"></script>
     <script src="./chrome-shim.js"></script>
     <script src="./background.js"></script>
-    <script type="module" crossorigin src="./assets/index-DcGplPL9.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BNPI9eP-.css">
+    <script type="module" crossorigin src="./assets/index-24nFerbd.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DYn1_wCb.css">
   </head>
   <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-20">
 
@@ -713,7 +713,7 @@
          관리자 화면 — 사용자 화면과 완전히 분리된 별도 화면이다.
          헤더의 "관리자" 버튼(관리자 계정에만 표시)으로 들어오고, 이 화면의
          "사용자 화면으로" 버튼으로 돌아간다. 하단 탭 4개:
-         프롬프트 / 사용자 관리 / 로그 / 데이터 업로드.
+         프롬프트 / 사용자 관리 / 로그 / 데이터 관리.
          (주의: hidden과 inline-flex/inline-block 같은 display 클래스를 한
          요소에 같이 쓰면 hidden이 무시된다 — 아래 마크업은 그 조합을 피했다.)
          ========================================================== -->
@@ -832,27 +832,47 @@
         </div>
       </section>
 
-      <!-- 탭 4: 데이터 업로드 -->
+      <!-- 탭 4: 데이터 관리 -->
       <section id="admin-tab-data" class="admin-tab-content hidden space-y-4">
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-          <div>
-            <h2 class="text-base font-bold text-slate-900">데이터 업로드</h2>
-            <p class="text-[11px] text-slate-400 leading-relaxed mt-1">관리자 설정(적용 중인 프롬프트, 추가로 지정한 관리자, 목록·버튼 크기 설정)을 파일로 백업하거나, 다른 브라우저·컴퓨터의 관리자 화면에서 업로드해 그대로 옮길 수 있습니다.</p>
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-base font-bold text-slate-900">데이터 관리</h2>
+            <div class="flex items-center gap-2">
+              <button type="button" id="admin-data-refresh-btn" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors">새로고침</button>
+              <button type="button" id="admin-data-json-btn" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors">JSON으로 보기</button>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">이 앱이 이 브라우저에 가지고 있는 모든 데이터를 <b>읽기 전용</b>으로 보여줍니다. 액세스 토큰과 Gemini API 키 값은 표시하지 않고 등록 여부만 보여줍니다. 재생목록 안의 영상은 한 번이라도 열어본 재생목록만 저장되어 있습니다.</p>
+          <p id="admin-data-overview-meta" class="text-[11px] text-slate-500"></p>
+          <div id="admin-data-overview" class="space-y-2"></div>
+          <div id="admin-data-json-box" class="hidden space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-600">전체 데이터(JSON)</span>
+              <button type="button" id="admin-data-json-copy-btn" class="px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">복사</button>
+            </div>
+            <pre id="admin-data-json" class="whitespace-pre-wrap break-words text-[11px] leading-relaxed text-slate-800 font-mono bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-96 overflow-auto"></pre>
           </div>
 
+          <details class="border border-slate-200 rounded-xl p-3">
+            <summary class="text-xs font-bold text-slate-800 cursor-pointer select-none">설정 내보내기 / 가져오기 (관리자 설정 백업)</summary>
+            <p class="text-[11px] text-slate-400 leading-relaxed mt-2">관리자 설정(적용 중인 프롬프트, 관리자 목록, 목록·버튼 크기 설정)을 파일로 백업하거나, 다른 브라우저·컴퓨터의 관리자 화면에서 업로드해 그대로 옮길 수 있습니다.</p>
+            <div class="space-y-3 mt-3">
           <div class="border border-slate-200 rounded-xl p-3 space-y-2">
-            <h3 class="text-xs font-bold text-slate-800">1. 설정 내려받기 (백업)</h3>
+            <h3 class="text-xs font-bold text-slate-800">설정 내려받기 (백업)</h3>
             <p class="text-[11px] text-slate-500">현재 관리자 설정을 JSON 파일로 저장합니다.</p>
             <button type="button" id="admin-data-export-btn" class="px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors">설정 파일 내려받기</button>
           </div>
 
           <div class="border border-slate-200 rounded-xl p-3 space-y-2">
-            <h3 class="text-xs font-bold text-slate-800">2. 설정 파일 업로드</h3>
+            <h3 class="text-xs font-bold text-slate-800">설정 파일 업로드</h3>
             <p class="text-[11px] text-slate-500">위에서 내려받은 JSON 파일을 고르면 내용을 미리 보여주고, 확인 후 적용합니다. 파일에 들어 있는 프롬프트는 덮어쓰고, 추가 관리자는 기존 목록에 합쳐집니다.</p>
             <input id="admin-data-file-input" type="file" accept=".json,application/json" class="block w-full text-xs text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:rounded-lg file:border file:border-slate-200 file:bg-white file:text-slate-700 hover:file:bg-slate-100 file:cursor-pointer" />
             <div id="admin-data-preview" class="hidden text-[11px] px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 space-y-0.5"></div>
             <button type="button" id="admin-data-import-btn" class="hidden px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors">업로드한 설정 적용하기</button>
           </div>
+
+            </div>
+          </details>
 
           <p id="admin-data-msg" class="hidden text-[11px]"></p>
         </div>
@@ -883,7 +903,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
-          <span class="text-xs font-medium">데이터 업로드</span>
+          <span class="text-xs font-medium">데이터 관리</span>
         </button>
       </div>
     </nav>
