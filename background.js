@@ -189,14 +189,11 @@ chrome.runtime.onMessage.addListener(function (message, _sender, sendResponse) {
     "ytpl:importAdminData": function () {
       return importAdminData(message.data);
     },
-    "ytpl:analyzePlaylistWithPrompt": function () {
-      return analyzePlaylistWithPrompt(message.prompt, message.videoTitles);
+    "ytpl:askAboutPlaylist": function () {
+      return askAboutPlaylist(message.playlistTitle, message.prompt, message.videos);
     },
     "ytpl:mergePlaylistInto": function () {
       return mergePlaylistInto(message.sourcePlaylistId, message.targetPlaylistId, message.selectedPlaylistItemIds, { keepSource: Boolean(message.keepSource) });
-    },
-    "ytpl:findMismatchedVideos": function () {
-      return findMismatchedVideos(message.playlistTitle, message.prompt, message.videos);
     },
     "ytpl:proposePlaylistSplit": function () {
       return proposePlaylistSplit(message.playlistTitle, message.prompt, message.videos);
@@ -1053,7 +1050,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 기본 프롬프트 문구를 바꿀 때마다 올린다. 화면(main.js의 EXPECTED_PROMPT_DEFAULTS_VERSION)이
 // 이 값을 보고, 확장 프로그램을 새로고침하지 않아 백그라운드가 옛 코드로 남아 있는지 알려 준다.
-const PROMPT_DEFAULTS_VERSION = 14;
+const PROMPT_DEFAULTS_VERSION = 15;
 
 const PROMPT_TYPES = [
   {
@@ -1079,17 +1076,10 @@ const PROMPT_TYPES = [
   },
   {
     id: "playlistAnalysis",
-    label: "목록 분석",
-    usage: "- 용도: 재생목록에 대한 질문에 답변\n- 실행: '목록 분석'에서 질문을 입력할 때\n- 예: \"이 목록 어떤 것 같아?\"",
-    fixedNote: "- 자동 첨부: 입력한 질문, 영상 목록, 결과를 받는 형식(JSON)",
-    defaultText: "이 재생목록에 대한 질문에 답해 주세요.\n\n- 영상 제목을 근거로 답해 주세요.\n- 짧게 3~5줄로 써 주세요. 각 줄은 \"- \"로 시작해 주세요.",
-  },
-  {
-    id: "mismatch",
-    label: "어울리지 않는 영상 찾기",
-    usage: "- 용도: 재생목록 제목(주제)과 맞지 않는 영상 찾기\n- 실행: 목록 분석 창의 '어울리지 않는 영상' 탭에서 찾기를 누를 때\n- 결과: 찾은 영상을 보여주고, 삭제하거나 다른 목록으로 이동",
-    fixedNote: "- 자동 첨부: 재생목록 제목, 입력한 요청, 영상 목록, 결과를 받는 형식(JSON)",
-    defaultText: "재생목록 제목과 영상 목록을 보고, 이 재생목록과 어울리지 않는 영상을 찾아 주세요.\n\n- 재생목록 제목에서 드러나는 주제와 분위기를 먼저 파악해 주세요.\n- 그 주제와 분명히 맞지 않는 영상만 골라 주세요.\n- 애매한 영상은 고르지 말고 남겨 두세요.\n- 어울리지 않는 영상이 없으면 아무것도 고르지 마세요.\n- 결과는 한 줄로 요약해 주세요.",
+    label: "목록 질문",
+    usage: "- 용도: 재생목록에 대한 질문 처리\n- 실행: 재생목록 화면의 질문 칸에서 질문할 때\n- 질문 종류\n  · 찾기: 조건에 맞는 영상을 목록으로 보여줌 (예: 어울리지 않는 영상 찾아줘)\n  · 일반 질문: 목록을 보고 짧게 답변",
+    fixedNote: "- 자동 첨부: 재생목록 제목, 입력한 질문, 영상 목록(제목·채널·길이), 결과를 받는 형식(JSON)",
+    defaultText: "재생목록 제목과 영상 목록을 보고, 사용자의 질문에 답해 주세요.\n\n- 영상을 찾아 달라는 질문(예: \"10분 넘는 영상 찾아줘\", \"이 목록과 어울리지 않는 영상 찾아줘\")이면, 조건에 맞는 영상만 골라 주세요. 애매한 영상은 고르지 마세요.\n- '어울리지 않는 영상'은 재생목록 제목에서 드러나는 주제와 분명히 맞지 않는 영상만 고르세요. 없으면 아무것도 고르지 마세요.\n- 그 밖의 일반 질문(예: \"이 목록 어떤 것 같아?\")이면, 영상 제목을 근거로 짧게 3~5줄로 답해 주세요. 각 줄은 \"- \"로 시작해 주세요.\n- 결과는 한 줄로 요약해 주세요.",
   },
   {
     id: "split",
@@ -1205,6 +1195,7 @@ const AI_FEATURE_DESCRIPTIONS = {
   "태그 분류": "영상마다 장르·분위기 같은 태그를 붙임",
   "재생목록 추천": "재생목록의 제목·설명 후보를 추천",
   "목록 분석": "재생목록에 대한 질문에 답함",
+  "목록 질문": "재생목록에 대한 질문에 답하거나, 조건에 맞는 영상을 찾음",
   "어울리지 않는 영상 찾기": "재생목록 제목(주제)과 맞지 않는 영상을 찾음",
   "목록 나누기": "재생목록을 가장 알맞은 두 목록으로 나눌 방법을 제안",
 };
@@ -2249,8 +2240,8 @@ async function runAdminCommand(instruction) {
 }
 
 // ==========================================
-// 재생목록 AI 작업 — "목록 분석" 모달의 세 가지 기능: 질문에 답하기(목록 분석),
-// 어울리지 않는 영상 찾기, 목록을 두 개로 나누기. 모두 같은 실행기(runPlaylistAiTask)를 쓴다.
+// 재생목록 AI 작업 — 재생목록 화면의 질문(답변 / 영상 찾기, 어울리지 않는 영상 포함)과
+// 목록 나누기. 모두 같은 실행기(runPlaylistAiTask)를 쓴다.
 // ==========================================
 const PLAYLIST_ANALYSIS_MAX_TITLES = 60;
 // 어울리지 않는 영상 찾기·목록 나누기는 목록 전체를 봐야 해서 더 많이 넘긴다.
@@ -2263,58 +2254,30 @@ function playlistAiVideoTitle(video) {
 
 function playlistAiVideoLine(video, index) {
   const channel = video && typeof video === "object" && video.channel ? String(video.channel) : "";
-  return `${index + 1}. ${sanitizeAiPromptText(playlistAiVideoTitle(video))}${channel ? ` (channel: ${sanitizeAiPromptText(channel)})` : ""}`;
+  const duration = video && typeof video === "object" && video.duration ? String(video.duration) : "";
+  const extras = [channel ? `channel: ${sanitizeAiPromptText(channel)}` : "", duration ? `duration: ${sanitizeAiPromptText(duration)}` : ""].filter(Boolean);
+  return `${index + 1}. ${sanitizeAiPromptText(playlistAiVideoTitle(video))}${extras.length ? ` (${extras.join(", ")})` : ""}`;
 }
 
 // 로그의 "제공 정보"에 남길 영상 목록(번호 없이 "제목 / 채널")
 function playlistAiVideoLogList(videos) {
   return (Array.isArray(videos) ? videos : []).map(function (video) {
     const channel = video && typeof video === "object" && video.channel ? String(video.channel) : "";
-    return playlistAiVideoTitle(video) + (channel ? " / " + channel : "");
+    const duration = video && typeof video === "object" && video.duration ? String(video.duration) : "";
+    return playlistAiVideoTitle(video) + (channel ? " / " + channel : "") + (duration ? " / " + duration : "");
   });
 }
 
-function buildCustomAnalysisPrompt(userPrompt, videoTitles, instructionText) {
-  // Nano는 느려서 너무 긴 입력을 주면 체감 속도가 나빠진다 — 60개면
-  // 대부분의 개인 재생목록 전체를 커버하면서도 적당한 길이다.
-  const sampleTitles = (Array.isArray(videoTitles) ? videoTitles : []).slice(0, PLAYLIST_ANALYSIS_MAX_TITLES);
+function buildQuestionPrompt(playlistTitle, userPrompt, videos, instructionText) {
+  const sample = (Array.isArray(videos) ? videos : []).slice(0, PLAYLIST_AI_FULL_LIST_MAX_VIDEOS);
   const lines = [
     instructionText || PROMPT_TYPE_MAP.playlistAnalysis.defaultText,
     "",
-    `User's question: ${sanitizeAiPromptText(userPrompt)}`,
-    'Respond with JSON only, matching this shape: {"answer": "..."}.',
-    'Put the reply in Korean in "answer", written as 3-5 short bullet lines (each line starts with "- " and is a brief noun-ending or "~함" phrase, not a full sentence; separate lines with \\n; based on the video titles below).',
-    "",
-    "Videos in this playlist (1-based numbering):",
-  ];
-  sampleTitles.forEach(function (title, index) {
-    lines.push(`${index + 1}. ${sanitizeAiPromptText(playlistAiVideoTitle(title))}`);
-  });
-  return lines.join("\n");
-}
-
-function normalizeCustomAnalysisResult(parsed) {
-  if (!parsed || typeof parsed !== "object") {
-    return null;
-  }
-  const text =
-    typeof parsed.answer === "string" && parsed.answer.trim()
-      ? parsed.answer.trim().slice(0, 1500)
-      : typeof parsed.summary === "string" && parsed.summary.trim()
-        ? parsed.summary.trim().slice(0, 1500)
-        : "";
-  return text ? { mode: "answer", answer: text } : null;
-}
-
-function buildMismatchPrompt(playlistTitle, userPrompt, videos, instructionText) {
-  const sample = (Array.isArray(videos) ? videos : []).slice(0, PLAYLIST_AI_FULL_LIST_MAX_VIDEOS);
-  const lines = [
-    instructionText || PROMPT_TYPE_MAP.mismatch.defaultText,
-    "",
     `Playlist title: ${sanitizeAiPromptText(playlistTitle)}`,
-    `User's request: ${sanitizeAiPromptText(userPrompt)}`,
-    'Respond with JSON only, matching this shape: {"matches": [1, 2], "summary": "..."}.',
-    'In "matches" put only the numbers of the videos that do NOT fit this playlist (an empty array if every video fits). Put a one-line Korean summary in "summary".',
+    `User's question: ${sanitizeAiPromptText(userPrompt)}`,
+    'Respond with JSON only, matching this shape: {"mode": "search" | "answer", "answer": "...", "matches": [1, 2], "summary": "..."}.',
+    'Use mode "search" when the question asks to find videos (including videos that do not fit the playlist title): put only the matching video numbers in "matches", leave "answer" empty, and put a one-line Korean summary in "summary".',
+    'Use mode "answer" for any other question: put a Korean reply in "answer", written as 3-5 short bullet lines (each line starts with "- " and is a brief noun-ending or "~함" phrase, not a full sentence; separate lines with \\n; based on the video titles below), and leave "matches" as an empty array.',
     "",
     "Videos in this playlist (1-based numbering):",
   ];
@@ -2324,10 +2287,15 @@ function buildMismatchPrompt(playlistTitle, userPrompt, videos, instructionText)
   return lines.join("\n");
 }
 
-function normalizeMismatchResult(parsed, videoCount) {
+// 결과: { mode: "search", matches, summary } 또는 { mode: "answer", answer }. 쓸 수 있는 내용이 없으면 null.
+function normalizeQuestionResult(parsed, videoCount) {
   if (!parsed || typeof parsed !== "object") {
     return null;
   }
+  const answer =
+    typeof parsed.answer === "string" && parsed.answer.trim() ? parsed.answer.trim().slice(0, 1500) : "";
+  const summary =
+    typeof parsed.summary === "string" && parsed.summary.trim() ? parsed.summary.trim().slice(0, 300) : "";
   const matches = Array.isArray(parsed.matches)
     ? Array.from(
         new Set(
@@ -2337,9 +2305,18 @@ function normalizeMismatchResult(parsed, videoCount) {
         ),
       ).sort((a, b) => a - b)
     : [];
-  const summary =
-    typeof parsed.summary === "string" && parsed.summary.trim() ? parsed.summary.trim().slice(0, 300) : "";
-  return { matches: matches, summary: summary || (matches.length ? "" : "어울리지 않는 영상을 찾지 못했습니다.") };
+
+  // mode가 틀리게 와도(모델이 지시를 안 따른 경우) 실제로 채워진 필드를 보고 판단한다.
+  const isSearch = parsed.mode === "search" || (parsed.mode !== "answer" && matches.length > 0);
+  if (isSearch) {
+    if (matches.length > 0) {
+      return { mode: "search", matches: matches, summary: summary };
+    }
+    // 조건에 맞는 영상이 없다는 뜻 — 실패가 아니라 답변으로 보여준다.
+    return { mode: "answer", answer: answer || summary || "조건에 맞는 영상을 찾지 못했습니다." };
+  }
+  const text = answer || summary;
+  return text ? { mode: "answer", answer: text } : null;
 }
 
 function buildSplitPrompt(playlistTitle, userPrompt, videos, instructionText) {
@@ -2404,11 +2381,15 @@ function normalizeSplitResult(parsed, videoCount) {
 }
 
 const PLAYLIST_AI_CLOUD_SCHEMAS = {
-  answer: { type: "OBJECT", properties: { answer: { type: "STRING" } }, required: ["answer"] },
-  mismatch: {
+  question: {
     type: "OBJECT",
-    properties: { matches: { type: "ARRAY", items: { type: "INTEGER" } }, summary: { type: "STRING" } },
-    required: ["matches", "summary"],
+    properties: {
+      mode: { type: "STRING" },
+      answer: { type: "STRING" },
+      matches: { type: "ARRAY", items: { type: "INTEGER" } },
+      summary: { type: "STRING" },
+    },
+    required: ["mode", "answer", "matches", "summary"],
   },
   split: {
     type: "OBJECT",
@@ -2428,11 +2409,15 @@ const PLAYLIST_AI_CLOUD_SCHEMAS = {
 };
 
 const PLAYLIST_AI_NANO_SCHEMAS = {
-  answer: { type: "object", properties: { answer: { type: "string" } }, required: ["answer"] },
-  mismatch: {
+  question: {
     type: "object",
-    properties: { matches: { type: "array", items: { type: "integer" } }, summary: { type: "string" } },
-    required: ["matches", "summary"],
+    properties: {
+      mode: { type: "string" },
+      answer: { type: "string" },
+      matches: { type: "array", items: { type: "integer" } },
+      summary: { type: "string" },
+    },
+    required: ["mode", "answer", "matches", "summary"],
   },
   split: {
     type: "object",
@@ -2565,40 +2550,26 @@ async function runPlaylistAiTask(task) {
   );
 }
 
-// 목록 분석(일반 질문) — 영상 제목을 근거로 질문에 답한다.
-async function analyzePlaylistWithPrompt(userPrompt, videoTitles) {
+// 목록 질문 — 일반 질문이면 글 답변, 영상을 찾는 질문(어울리지 않는 영상 포함)이면 영상 번호(1부터)를 돌려준다.
+async function askAboutPlaylist(playlistTitle, userPrompt, videos) {
   if (!userPrompt || !String(userPrompt).trim()) {
     throw new Error("질문을 입력해주세요.");
   }
-  const titles = Array.isArray(videoTitles) ? videoTitles : [];
-  return runPlaylistAiTask({
-    promptType: "playlistAnalysis",
-    featureLabel: "목록 분석",
-    detail: `영상 ${titles.length}개`,
-    provided: { "사용자 질문": String(userPrompt), "영상 제목": titles.map(playlistAiVideoTitle) },
-    buildPrompt: (instructionText) => buildCustomAnalysisPrompt(userPrompt, titles, instructionText),
-    schemaKey: "answer",
-    normalize: normalizeCustomAnalysisResult,
-  });
-}
-
-// 재생목록 제목(주제)과 맞지 않는 영상 찾기 — 결과는 영상 번호(1부터)와 한 줄 요약.
-async function findMismatchedVideos(playlistTitle, userPrompt, videos) {
   const list = Array.isArray(videos) ? videos.slice(0, PLAYLIST_AI_FULL_LIST_MAX_VIDEOS) : [];
   if (list.length === 0) {
     throw new Error("이 재생목록에는 영상이 없습니다.");
   }
-  const request = String(userPrompt || "").trim() || "이 목록과 어울리지 않는 동영상 목록을 찾아줘";
+  const question = String(userPrompt).trim();
   const result = await runPlaylistAiTask({
-    promptType: "mismatch",
-    featureLabel: "어울리지 않는 영상 찾기",
+    promptType: "playlistAnalysis",
+    featureLabel: "목록 질문",
     detail: `영상 ${list.length}개`,
-    provided: { "재생목록 제목": String(playlistTitle || ""), "사용자 요청": request, "영상 목록": playlistAiVideoLogList(list) },
-    buildPrompt: (instructionText) => buildMismatchPrompt(playlistTitle, request, list, instructionText),
-    schemaKey: "mismatch",
-    normalize: (parsed) => normalizeMismatchResult(parsed, list.length),
+    provided: { "재생목록 제목": String(playlistTitle || ""), "사용자 질문": question, "영상 목록": playlistAiVideoLogList(list) },
+    buildPrompt: (instructionText) => buildQuestionPrompt(playlistTitle, question, list, instructionText),
+    schemaKey: "question",
+    normalize: (parsed) => normalizeQuestionResult(parsed, list.length),
   });
-  return { matches: result.matches, summary: result.summary, checkedCount: list.length };
+  return Object.assign({}, result, { checkedCount: list.length });
 }
 
 // 재생목록을 두 목록으로 나눌 방법 제안 — 실제로 만들지는 않는다(splitPlaylist가 한다).
